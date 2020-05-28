@@ -4,7 +4,7 @@ Changelog
 0.3 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- First version on pypi.
 
 
 0.2 (2020-05-28)
