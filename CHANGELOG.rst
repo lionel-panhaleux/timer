@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.3 (unreleased)
+0.3 (2020-05-28)
 ----------------
 
 - First version on pypi.
