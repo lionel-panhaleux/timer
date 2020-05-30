@@ -5,7 +5,7 @@ Changelog
 ----------------
 
 - Fixed a bug when pause and resume where used successively
-- Added "add" and "sub" commands
+- Added "pause", "add" and "sub" commands
 - Better time input parsing
 - More proper hours:minutes display (with padding zeroes)
 

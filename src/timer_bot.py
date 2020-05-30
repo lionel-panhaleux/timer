@@ -62,6 +62,8 @@ DISPLAY_SECONDS = 5 * 60
 
 
 class Timer:
+    """Timer object: one per channel"""
+
     def __init__(self, channel, start_time, time, log_prefix=""):
         self.channel = channel
         self.start_time = start_time
@@ -72,11 +74,11 @@ class Timer:
         for limit in THRESHOLDS:
             if time > limit:
                 self.thresholds.append(limit)
-
+        # internals
         self.message = None
         self.paused = None
-        self.reaction_future = None
-        self.unpause_future = None
+        self.reaction_future = None  # waiting for user reaction on embed
+        self.unpause_future = None  # waiting for remove reaction to unpause
 
     async def countdown(self):
         """Countdown: update embed, send notifications
@@ -84,7 +86,7 @@ class Timer:
         while self.time_left > 0:
             # update frequency depends on time left
             if self.time_left < DISPLAY_SECONDS:
-                # the is the absolute minimum because of Discord rate limitation
+                # minimum because of Discord rate limitation
                 await asyncio.sleep(1)
             else:
                 await asyncio.sleep(30)
@@ -99,11 +101,13 @@ class Timer:
         await self.stop()
 
     async def update_time_left(self):
+        """Used by refresh and countdown."""
         self.time_left = max(
             0, self.total_time - max(0, client.loop.time() - self.start_time),
         )
 
     async def wait_reaction(self):
+        """Displays the message, wait for a "pause" or "stop" reactions."""
         while self.time_left > 0:
             if not self.message:
                 self.message = await self.channel.send(embed=self.embed())
@@ -118,7 +122,6 @@ class Timer:
                     "reaction_add",
                     # avoid timeouting before countdown finishes
                     timeout=self.time_left + 60,
-                    # beware not to trigger on our own reaction, they are added async
                     check=lambda reaction, user: (
                         reaction.message.id == self.message.id
                         and str(reaction.emoji) in ["⏱", "🛑"]
@@ -145,18 +148,20 @@ class Timer:
                     continue
 
     async def run(self):
+        """Run the timer, update the client.TIMERS map accordingly."""
         client.TIMERS[self.channel] = self
         self.run_future = asyncio.gather(self.countdown(), self.wait_reaction())
         try:
             await self.run_future
         except asyncio.CancelledError:
-            logger.info(f"[{self.log_prefix}] Cancelled")
+            pass
         except asyncio.TimeoutError:
-            logger.info(f"[{self.log_prefix}] Timeout")
+            logger.warning(f"[{self.log_prefix}] Timeout")
         finally:
             del client.TIMERS[self.channel]
 
     async def stop(self):
+        """Stops the timer. Used internally but can be called externally."""
         if self.time_left > 0:
             await self.channel.send("Stopped with " + self.time_str())
         else:
@@ -169,6 +174,9 @@ class Timer:
             self.message = None
 
     async def pause(self, user):
+        """Pauses the timer. Used internally but can be called externally."""
+        if self.paused:
+            return
         self.paused = client.loop.time()
         if self.message:
             await self.message.edit(embed=self.embed())
@@ -196,6 +204,7 @@ class Timer:
             self.paused = None
 
     async def refresh(self):
+        """Display a new embed."""
         if self.message:
             await self.message.delete()
             self.message = None
@@ -219,6 +228,7 @@ class Timer:
         return discord.Embed.from_dict({"title": title, "description": description})
 
     def time_str(self):
+        """Time string for the current time left."""
         return self._time_str(self.time_left)
 
     @staticmethod
@@ -257,6 +267,9 @@ async def on_message(message):
             elif content.lower() == "resume":
                 await timer.refresh()
                 logger.info(f"[{prefix}] Refreshed and resumed")
+            elif content.lower() == "pause":
+                await timer.pause(message.author)
+                logger.info(f"[{prefix}] Paused")
             elif content.lower()[:4] == "add ":
                 content = content[4:]
                 time = get_initial_time(content, default="minute")
@@ -276,6 +289,7 @@ async def on_message(message):
                         description=(
                             "- `timer` to display it\n"
                             "- `timer stop` to terminate it\n"
+                            "- `timer pause` to pause it\n"
                             "- `timer add 5` to add 5mn to it\n"
                             "- `timer sub 30mn` to substract 5mn from it\n"
                         ),
