@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.4 (unreleased)
+0.4 (2020-05-30)
 ----------------
 
 - Fixed a bug when pause and resume where used successively
