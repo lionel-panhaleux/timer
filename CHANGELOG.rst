@@ -4,7 +4,7 @@ Changelog
 0.5 (unreleased)
 ----------------
 
-- Additional rulings.
+- Nothing changed yet.
 
 
 0.4 (2020-05-30)
