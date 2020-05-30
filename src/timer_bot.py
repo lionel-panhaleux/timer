@@ -18,9 +18,9 @@ async def on_ready():
 
 #: regex use to parse time expression for timer initialisation
 REGEX = (
-    r"\s*(?P<high>\d{1,2})"
-    r"\s*((?P<fraction>\.\d+)|(?P<separator>:|')(?P<low>\d{1,2}))?"
-    r"\s*(?P<unit>h|hour|mn|min|minute|s|second)?s?\s*'*\s*"
+    r"^\s*(?P<high>\d{1,2})"
+    r"\s*((?P<fraction>\.\d+)|(?P<separator>:|')(?P<low>\d{1,2})?)?"
+    r"\s*(?P<unit>h|hour|mn|min|minute|s|second)?s?\s*'*\s*$"
 )
 
 #: multipliers for accepted time units
@@ -78,10 +78,36 @@ class Timer:
         self.reaction_future = None
         self.unpause_future = None
 
+    async def countdown(self):
+        """Countdown: update embed, send notifications
+        """
+        while self.time_left > 0:
+            # update frequency depends on time left
+            if self.time_left < DISPLAY_SECONDS:
+                # the is the absolute minimum because of Discord rate limitation
+                await asyncio.sleep(1)
+            else:
+                await asyncio.sleep(30)
+            if self.paused:
+                continue
+            await self.update_time_left()
+            # update the embed, send a notification if we have hit a threshold
+            if self.message:
+                await self.message.edit(embed=self.embed())
+            if self.thresholds and self.thresholds[-1] >= self.time_left:
+                await self.channel.send(self._time_str(self.thresholds.pop()))
+        await self.stop()
+
+    async def update_time_left(self):
+        self.time_left = max(
+            0, self.total_time - max(0, client.loop.time() - self.start_time),
+        )
+
     async def wait_reaction(self):
         while self.time_left > 0:
             if not self.message:
                 self.message = await self.channel.send(embed=self.embed())
+                logging.info(f"[{self.log_prefix}] New embed")
                 try:
                     for reaction in ["⏱", "🛑"]:
                         await self.message.add_reaction(reaction)
@@ -173,6 +199,7 @@ class Timer:
         if self.message:
             await self.message.delete()
             self.message = None
+        await self.update_time_left()
         if self.reaction_future:
             self.reaction_future.cancel()
         if self.unpause_future:
@@ -190,28 +217,6 @@ class Timer:
             description = "Click the ⏱reaction to pause, 🛑 to terminate."
         title += self.time_str()
         return discord.Embed.from_dict({"title": title, "description": description})
-
-    async def countdown(self):
-        """Countdown: update embed, send notifications
-        """
-        while self.time_left > 0:
-            # update frequency depends on time left
-            if self.time_left < DISPLAY_SECONDS:
-                # the is the absolute minimum because of Discord rate limitation
-                await asyncio.sleep(1)
-            else:
-                await asyncio.sleep(30)
-            if self.paused:
-                continue
-            self.time_left = max(
-                0, self.total_time - max(0, client.loop.time() - self.start_time),
-            )
-            # update the embed, send a notification if we have hit a threshold
-            if self.message:
-                await self.message.edit(embed=self.embed())
-            if self.thresholds and self.thresholds[-1] >= self.time_left:
-                await self.channel.send(self._time_str(self.thresholds.pop()))
-        await self.stop()
 
     def time_str(self):
         return self._time_str(self.time_left)
@@ -252,12 +257,27 @@ async def on_message(message):
             elif content.lower() == "resume":
                 await timer.refresh()
                 logger.info(f"[{prefix}] Refreshed and resumed")
+            elif content.lower()[:4] == "add ":
+                content = content[4:]
+                time = get_initial_time(content, default="minute")
+                timer.total_time += time
+                await timer.refresh()
+                logger.info(f"[{prefix}] Added {time} and refreshed")
+            elif content.lower()[:4] == "sub ":
+                content = content[4:]
+                time = get_initial_time(content, default="minute")
+                timer.total_time -= time
+                await timer.refresh()
+                logger.info(f"[{prefix}] Substracted {time} and refreshed")
             else:
                 await message.channel.send(
                     embed=discord.Embed(
                         title="Timer already running",
                         description=(
-                            "- `timer` to display it\n" "- `timer stop` to terminate it"
+                            "- `timer` to display it\n"
+                            "- `timer stop` to terminate it\n"
+                            "- `timer add 5` to add 5mn to it\n"
+                            "- `timer sub 30mn` to substract 5mn from it\n"
                         ),
                     )
                 )
@@ -283,7 +303,10 @@ async def on_message(message):
         await timer.run()
         logger.info(f"[{prefix}] Initial timer finished")
     # if parsing fails, display help
+    # ignore message with more the 2 words
     else:
+        if len(content.split()) > 2:
+            return
         await message.channel.send(
             embed=discord.Embed(
                 title="Usage",
@@ -292,6 +315,7 @@ async def on_message(message):
                     "- `timer 2.5h` starts a 2 hours 30 minutes timer\n"
                     "- `timer 2:45` starts a 2 hours 45 minutes timer\n"
                     "- `timer 30mn` starts a 30 minutes timer\n"
+                    "- `timer 1'20` starts a 1 minutes 20 seconds timer\n"
                     "- `timer` displays the current timer if there is one\n"
                     "- `timer stop` stops the current timer if there is one\n"
                 ),
@@ -299,7 +323,7 @@ async def on_message(message):
         )
 
 
-def get_initial_time(message):
+def get_initial_time(message, default="hour"):
     """Get initial time from message content"""
     message = message.lower()
     match = re.match(REGEX, message.lower())
@@ -307,7 +331,7 @@ def get_initial_time(message):
         return
     match = match.groupdict()
     try:
-        multiplier = MULTIPLIER[match.get("unit") or "hour"]
+        multiplier = MULTIPLIER[match.get("unit") or default]
     except KeyError:
         return
     if not match.get("unit") and match.get("separator") == "'":
