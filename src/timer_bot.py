@@ -64,8 +64,9 @@ DISPLAY_SECONDS = 5 * 60
 class Timer:
     """Timer object: one per channel"""
 
-    def __init__(self, channel, start_time, time, log_prefix=""):
+    def __init__(self, channel, author, start_time, time, log_prefix=""):
         self.channel = channel
+        self.author = author
         self.start_time = start_time
         self.total_time = time
         self.time_left = time
@@ -97,7 +98,9 @@ class Timer:
             if self.message:
                 await self.message.edit(embed=self.embed())
             if self.thresholds and self.thresholds[-1] >= self.time_left:
-                await self.channel.send(self._time_str(self.thresholds.pop()))
+                await self.channel.send(
+                    f"{self.author.mention} {self._time_str(self.thresholds.pop())}"
+                )
         await self.stop()
 
     async def update_time_left(self):
@@ -193,6 +196,8 @@ class Timer:
                 ),
             )
         )
+        if user != self.author:
+            await self.channel.send(f"{self.author.mention} paused by {user.mention}")
         try:
             await self.unpause_future
             self.unpause_future = None
@@ -313,7 +318,9 @@ async def on_message(message):
     # no timer running in channel
     total_time = get_initial_time(content)
     if total_time:
-        timer = Timer(message.channel, client.loop.time(), total_time, prefix)
+        timer = Timer(
+            message.channel, message.author, client.loop.time(), total_time, prefix
+        )
         await timer.run()
         logger.info(f"[{prefix}] Initial timer finished")
     # if parsing fails, display help

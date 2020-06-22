@@ -4,7 +4,7 @@ Changelog
 0.5 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Mention timer author on thresholds and when paused by someone else
 
 
 0.4 (2020-05-30)
