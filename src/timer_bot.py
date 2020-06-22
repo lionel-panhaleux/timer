@@ -168,7 +168,7 @@ class Timer:
         if self.time_left > 0:
             await self.channel.send("Stopped with " + self.time_str())
         else:
-            await self.channel.send("Finished")
+            await self.channel.send(f"{self.author.mention} Finished")
         self.time_left = 0
         logger.info(f"[{self.log_prefix}] Timer stopped")
         self.run_future.cancel()
