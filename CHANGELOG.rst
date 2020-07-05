@@ -4,7 +4,7 @@ Changelog
 0.7 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Fixed the pause timer feature
 
 
 0.6 (2020-06-22)
