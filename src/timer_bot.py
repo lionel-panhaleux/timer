@@ -77,7 +77,6 @@ class Timer:
                 self.thresholds.append(limit)
         # internals
         self.message = None
-        self.paused = None
         self.reaction_future = None  # waiting for user reaction on embed
         self.unpause_future = None  # waiting for remove reaction to unpause
 
@@ -91,7 +90,7 @@ class Timer:
                 await asyncio.sleep(1)
             else:
                 await asyncio.sleep(30)
-            if self.paused:
+            if self.unpause_future:
                 continue
             await self.update_time_left()
             # update the embed, send a notification if we have hit a threshold
@@ -178,12 +177,10 @@ class Timer:
 
     async def pause(self, user):
         """Pauses the timer. Used internally but can be called externally."""
-        if self.paused:
+        if self.unpause_future:
             return
-        self.paused = client.loop.time()
-        if self.message:
-            await self.message.edit(embed=self.embed())
-            await self.message.remove_reaction("🛑", client.user)
+        paused_time = client.loop.time()
+        paused_message = self.message
         self.unpause_future = asyncio.ensure_future(
             client.wait_for(
                 "reaction_remove",
@@ -196,17 +193,20 @@ class Timer:
                 ),
             )
         )
+        if paused_message:
+            await self.message.edit(embed=self.embed())
+            await self.message.remove_reaction("🛑", client.user)
         if user != self.author:
             await self.channel.send(f"{self.author.mention} paused by {user.mention}")
         try:
             await self.unpause_future
+        finally:  # can timeout or be cancelled by a refresh, in any case resume.
             self.unpause_future = None
-            if self.message:
-                await self.message.edit(embed=self.embed())
-                await self.message.add_reaction("🛑")
-        finally:
-            self.start_time += client.loop.time() - self.paused
-            self.paused = None
+            self.start_time += client.loop.time() - paused_time
+        # in case of a refresh, self.message may have changed already
+        if paused_message == self.message:
+            await self.message.edit(embed=self.embed())
+            await self.message.add_reaction("🛑")
 
     async def refresh(self):
         """Display a new embed."""
@@ -223,8 +223,8 @@ class Timer:
         """The running timer embed"""
         if self.time_left < 1:
             return discord.Embed(title="Finished")
-        if self.paused:
-            title = "Timer paused: " if self.paused else ""
+        if self.unpause_future:
+            title = "Timer paused: " if self.unpause_future else ""
             description = "Click the ⏱reaction again to unpause."
         else:
             title = ""
@@ -301,7 +301,7 @@ async def on_message(message):
                     )
                 )
         else:
-            if timer.paused:
+            if timer.unpause_future:
                 await message.channel.send(
                     embed=discord.Embed(
                         title="Timer paused with " + timer.time_str(),
