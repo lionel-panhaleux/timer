@@ -57,8 +57,11 @@ THRESHOLDS = [
     48 * 3600,
 ]
 
-#: timer embed will display seconds starting frin this point int time
+#: timer embed will display seconds starting from this point int time
 DISPLAY_SECONDS = 5 * 60
+
+#: pause will timeout after this amount of seconds
+PAUSE_TIMEOUT = 1800
 
 
 class Timer:
@@ -122,8 +125,8 @@ class Timer:
             self.reaction_future = asyncio.ensure_future(
                 client.wait_for(
                     "reaction_add",
-                    # avoid timeouting before countdown finishes
-                    timeout=self.time_left + 60,
+                    # avoid timeouting before countdown finishes, even if paused
+                    timeout=self.time_left + PAUSE_TIMEOUT + 60,
                     check=lambda reaction, user: (
                         reaction.message.id == self.message.id
                         and str(reaction.emoji) in ["⏱", "🛑"]
@@ -133,8 +136,11 @@ class Timer:
             )
             try:
                 reaction, user = await self.reaction_future
-            except asyncio.CancelledError:  # refresh
+            except asyncio.CancelledError:  # refresh, stop
                 logging.info(f"[{self.log_prefix}] Reaction cancelled")
+                continue  # if refreshed, there is time left. If stopped, loop will end
+            except asyncio.TimeoutError:  # timeout, should not happen, just continue
+                logging.info(f"[{self.log_prefix}] Timed out")
                 continue
             self.reaction_future = None
             if reaction.emoji == "🛑":
@@ -143,11 +149,7 @@ class Timer:
                 return
             if reaction.emoji == "⏱":
                 logger.info(f"[{self.log_prefix}] ({user.name}) reaction pause")
-                try:
-                    await self.pause(user)
-                except asyncio.CancelledError:  # refresh
-                    logging.info(f"[{self.log_prefix}] Pause cancelled")
-                    continue
+                await self.pause(user)
 
     async def run(self):
         """Run the timer, update the client.TIMERS map accordingly."""
@@ -158,7 +160,8 @@ class Timer:
         except asyncio.CancelledError:
             pass
         except asyncio.TimeoutError:
-            logger.warning(f"[{self.log_prefix}] Timeout")
+            logger.exception(f"[{self.log_prefix}] Timeout - something went wrong")
+            self.stop()
         finally:
             del client.TIMERS[self.channel]
 
@@ -184,7 +187,7 @@ class Timer:
         self.unpause_future = asyncio.ensure_future(
             client.wait_for(
                 "reaction_remove",
-                timeout=1800,
+                timeout=PAUSE_TIMEOUT,
                 # beware not to trigger on our own reaction, they are added async
                 check=lambda reaction, ruser: (
                     reaction.message.id == self.message.id
@@ -200,24 +203,30 @@ class Timer:
             await self.channel.send(f"{self.author.mention} paused by {user.mention}")
         try:
             await self.unpause_future
-        finally:  # can timeout or be cancelled by a refresh, in any case resume.
+        except asyncio.CancelledError:
+            logging.info(f"[{self.log_prefix}] Pause cancelled - resume")
+        except asyncio.TimeoutError:
+            logging.info(f"[{self.log_prefix}] Pause timed out - resume")
+        finally:  # in any case resume.
             self.unpause_future = None
             self.start_time += client.loop.time() - paused_time
+        try:
+            await paused_message.edit(embed=self.embed())
+            await paused_message.add_reaction("🛑")
         # in case of a refresh, self.message may have changed already
-        if paused_message == self.message:
-            await self.message.edit(embed=self.embed())
-            await self.message.add_reaction("🛑")
+        except discord.errors.NotFound:
+            pass
 
     async def refresh(self):
         """Display a new embed."""
+        if self.unpause_future:
+            self.unpause_future.cancel()
         if self.message:
             await self.message.delete()
             self.message = None
         await self.update_time_left()
         if self.reaction_future:
             self.reaction_future.cancel()
-        if self.unpause_future:
-            self.unpause_future.cancel()
 
     def embed(self):
         """The running timer embed"""
