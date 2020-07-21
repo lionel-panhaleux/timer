@@ -4,7 +4,7 @@ Changelog
 0.8 (unreleased)
 ----------------
 
-- Fixe pause timeout (after 30mn) and `timer resume` display
+- Fix pause timeout (after 30mn) and `timer resume` display
 
 
 0.7 (2020-07-05)
