@@ -63,6 +63,16 @@ DISPLAY_SECONDS = 5 * 60
 #: pause will timeout after this amount of seconds
 PAUSE_TIMEOUT = 1800
 
+#: help message for a running timer
+RUNNING_TIMER_HELP = (
+    "- `timer` to display it anew\n"
+    "- `timer stop` to terminate it\n"
+    "- `timer pause` to pause\n"
+    "- `timer resume` to resume\n"
+    "- `timer add 5` to add 5mn to it\n"
+    "- `timer sub 1h` to substract 1h from it\n"
+)
+
 
 class Timer:
     """Timer object: one per channel"""
@@ -299,14 +309,7 @@ async def on_message(message):
             else:
                 await message.channel.send(
                     embed=discord.Embed(
-                        title="Timer already running",
-                        description=(
-                            "- `timer` to display it\n"
-                            "- `timer stop` to terminate it\n"
-                            "- `timer pause` to pause it\n"
-                            "- `timer add 5` to add 5mn to it\n"
-                            "- `timer sub 30mn` to substract 5mn from it\n"
-                        ),
+                        title="Timer already running", description=RUNNING_TIMER_HELP,
                     )
                 )
         else:
@@ -315,7 +318,7 @@ async def on_message(message):
                     embed=discord.Embed(
                         title="Timer paused with " + timer.time_str(),
                         description=(
-                            "- `timer resume` to display it anew\n"
+                            "- `timer resume` to resume and display it anew\n"
                             "- `timer stop` to terminate it\n"
                         ),
                     )
@@ -338,17 +341,23 @@ async def on_message(message):
         if len(content.split()) > 2:
             return
         await message.channel.send(
-            embed=discord.Embed(
-                title="Usage",
-                description=(
-                    "- `timer 2h` starts a 2 hours timer\n"
-                    "- `timer 2.5h` starts a 2 hours 30 minutes timer\n"
-                    "- `timer 2:45` starts a 2 hours 45 minutes timer\n"
-                    "- `timer 30mn` starts a 30 minutes timer\n"
-                    "- `timer 1'20` starts a 1 minutes 20 seconds timer\n"
-                    "- `timer` displays the current timer if there is one\n"
-                    "- `timer stop` stops the current timer if there is one\n"
-                ),
+            embed=discord.Embed.from_dict(
+                {
+                    "title": "Usage",
+                    "fields": [
+                        {
+                            "name": "Start a timer",
+                            "value": (
+                                "- `timer 2h` starts a 2 hours timer\n"
+                                "- `timer 2.5` starts a 2 hours 30 minutes timer\n"
+                                "- `timer 2:45` starts a 2 hours 45 minutes timer\n"
+                                "- `timer 30mn` starts a 30 minutes timer\n"
+                                "- `timer 1'20` starts a 1 minutes 20 seconds timer\n"
+                            ),
+                        },
+                        {"name": "Once a timer runs", "value": RUNNING_TIMER_HELP},
+                    ],
+                }
             )
         )
 

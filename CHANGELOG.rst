@@ -5,7 +5,7 @@ Changelog
 ----------------
 
 - Fix pause timeout (after 30mn) and `timer resume` display
-
+- Improve help message
 
 0.7 (2020-07-05)
 ----------------
