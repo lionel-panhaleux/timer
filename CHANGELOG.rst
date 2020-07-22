@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.8 (unreleased)
+0.8 (2020-07-22)
 ----------------
 
 - Fix pause timeout (after 30mn) and `timer resume` display
