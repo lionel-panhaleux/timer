@@ -4,7 +4,7 @@ Changelog
 0.9 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Fix pause reaction
 
 
 0.8 (2020-07-22)
