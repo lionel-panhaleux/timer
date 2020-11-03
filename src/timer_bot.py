@@ -145,12 +145,17 @@ class Timer:
                     ),
                 )
             )
+            self.refreshing = False
             try:
                 payload = await self.reaction_future
                 user = client.get_user(payload.user_id)
             except asyncio.CancelledError:  # refresh, stop
-                logging.info(f"[{self.log_prefix}] Reaction cancelled")
-                continue  # if refreshed, there is time left. If stopped, loop will end
+                logging.info(f"[{self.log_prefix}] Cancelled")
+                # if refreshing, do not stop
+                if self.refreshing:
+                    continue
+                else:
+                    raise
             except asyncio.TimeoutError:  # timeout, should not happen, just continue
                 logging.info(f"[{self.log_prefix}] Timed out")
                 continue
@@ -175,10 +180,14 @@ class Timer:
         try:
             await self.run_future
         except asyncio.CancelledError:
-            pass
+            logger.info(f"[{self.log_prefix}] Timer cancelled")
+            # at that point aiohttp may be closed in case of SIGINT/SIGTERM
         except asyncio.TimeoutError:
             logger.exception(f"[{self.log_prefix}] Timeout - something went wrong")
-            self.stop()
+            await self.stop()
+        except Exception:
+            logger.exception(f"[{self.log_prefix}] Unhandled exception")
+            client.loop.stop()
         finally:
             del client.TIMERS[self.channel]
 
@@ -243,6 +252,7 @@ class Timer:
 
     async def refresh(self):
         """Display a new embed."""
+        self.refreshing = True
         if self.unpause_future:
             self.unpause_future.cancel()
         if self.message:
@@ -323,8 +333,7 @@ async def on_message(message):
             else:
                 await message.channel.send(
                     embed=discord.Embed(
-                        title="Timer already running",
-                        description=RUNNING_TIMER_HELP,
+                        title="Timer already running", description=RUNNING_TIMER_HELP
                     )
                 )
         else:
