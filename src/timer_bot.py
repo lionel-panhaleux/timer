@@ -4,6 +4,7 @@ import os
 import re
 
 import discord
+from discord.errors import DiscordException
 
 logger = logging.getLogger()
 client = discord.Client()
@@ -107,7 +108,10 @@ class Timer:
             await self.update_time_left()
             # update the embed, send a notification if we have hit a threshold
             if self.message:
-                await self.message.edit(embed=self.embed())
+                try:
+                    await self.message.edit(embed=self.embed())
+                except discord.errors.NotFound:
+                    pass
             if self.thresholds and self.thresholds[-1] >= self.time_left:
                 await self.channel.send(
                     f"{self.author.mention} {self._time_str(self.thresholds.pop())}"
@@ -253,11 +257,11 @@ class Timer:
     async def refresh(self):
         """Display a new embed."""
         self.refreshing = True
-        if self.unpause_future:
-            self.unpause_future.cancel()
         if self.message:
             await self.message.delete()
             self.message = None
+        if self.unpause_future:
+            self.unpause_future.cancel()
         await self.update_time_left()
         if self.reaction_future:
             self.reaction_future.cancel()

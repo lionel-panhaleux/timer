@@ -4,7 +4,7 @@ Changelog
 0.10 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Resuming a paused timer with a "timer resume" message could cause the timer to crash. Fixed it.
 
 
 0.9 (2020-11-03)
