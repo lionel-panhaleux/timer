@@ -233,9 +233,12 @@ class Timer:
             await paused_message.remove_reaction("🛑", client.user)
         user = client.get_user(user_id)
         if user_id != self.author.id:
-            await self.channel.send(
-                f"{self.author.mention} paused by {user.mention if user else user_id}"
-            )
+            if user:
+                message = f"{self.author.mention} paused by {user.mention}"
+            else:
+                message = f"{self.author.mention} paused by <@{user_id}>"
+            await self.channel.send(message)
+
         try:
             await self.unpause_future
             logging.info(f"[{self.log_prefix}] ({user or user_id}) reaction unpause")

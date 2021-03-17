@@ -4,7 +4,7 @@ Changelog
 0.11 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Fix pausing user mention
 
 
 0.10 (2021-03-02)
