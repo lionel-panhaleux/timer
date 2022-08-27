@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.2 (unreleased)
+1.2 (2022-08-27)
 ----------------
 
 - Now works in threads and voice channel chats
