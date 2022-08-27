@@ -106,7 +106,7 @@ class Timer:
                     self.resume_future = None
                     self.start_time += bot._loop.time() - paused_time
             else:
-                if self.time_left < DISPLAY_SECONDS:
+                if self.time_left < DISPLAY_SECONDS + 30:
                     # minimum because of Discord rate limitation
                     self.countdown_future = asyncio.ensure_future(asyncio.sleep(1.1))
                 else:
@@ -223,14 +223,21 @@ class Timer:
     @staticmethod
     def _time_str(time):
         """Returns a human readable string for given time (int) in seconds"""
+        seconds = round(time % 60)
+        if seconds > 59 or time > DISPLAY_SECONDS:
+            seconds = 0
+        minutes = round((time - seconds) % 3600 / 60)
+        if minutes > 59:
+            minutes = 0
+        hours = round((time - minutes * 60 - seconds) / 3600)
         if time > 3600:
-            return f"{int(time / 3600):0>2}:{round(time % 3600 / 60):0>2} remaining"
+            return f"{hours}:{minutes:0>2} remaining"
         if time > DISPLAY_SECONDS:
-            return f"{round(time / 60)} minutes remaining"
-        if time >= 60:
-            return f"{int(time / 60)}′ {round(time % 60):0>2}″ remaining"
+            return f"{minutes} minutes remaining"
+        if minutes:
+            return f"{minutes}′ {seconds:0>2}″ remaining"
         if time > 0:
-            return f"{round(time)} seconds remaining"
+            return f"{seconds} seconds remaining"
         return "time!"
 
 

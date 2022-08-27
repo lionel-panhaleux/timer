@@ -4,7 +4,8 @@ Changelog
 0.13 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- V1.0
+- Improve time display on boundaries (no more 1:60 or going from 5min to 4'35'')
 
 
 0.12 (2022-08-27)
