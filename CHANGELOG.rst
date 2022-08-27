@@ -4,7 +4,7 @@ Changelog
 1.2 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Now works in threads and voice channel chats
 
 
 1.1 (2022-08-27)

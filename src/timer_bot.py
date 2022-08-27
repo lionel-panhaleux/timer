@@ -262,7 +262,12 @@ def _get_prefix(ctx: interactions.CommandContext):
     """Prefix used for log messages"""
     if ctx.guild:
         prefix = f"{ctx.guild.name}"
-        prefix += f":{ctx.channel.name}"
+        logger.debug("CTX: %s", ctx)
+        logger.debug("extras: %s", ctx._extras)
+        logger.debug("channel: %s", ctx.channel)
+        logger.debug("channel_id: %s", ctx.channel_id)
+        if ctx.channel:
+            prefix += f":{ctx.channel.name}"
     else:
         prefix = f"{ctx.author.name}"
     return prefix
@@ -292,9 +297,15 @@ def _get_prefix(ctx: interactions.CommandContext):
 )
 async def timer_start(ctx: interactions.CommandContext, hours: int, minutes: int = 0):
     """Start a timer"""
+    # channel info will miss from threads and voice channels chats
+    # see https://github.com/interactions-py/library/issues/1041
+    if ctx.channel is interactions.MISSING:
+        ctx.channel = interactions.Channel(
+            _client=ctx.client, **(await ctx.client.get_channel(ctx.channel_id))
+        )
     prefix = _get_prefix(ctx)
     # timer already running in channel
-    if ctx.channel in TIMERS:
+    if ctx.channel_id in TIMERS:
         await ctx.send(
             embeds=[
                 interactions.Embed(
