@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.0 (unreleased)
+0.12 (2022-08-27)
 -----------------
 
 - Switch to slash commands
