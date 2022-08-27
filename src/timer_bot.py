@@ -9,7 +9,7 @@ import interactions
 logger = logging.getLogger()
 bot = interactions.Client(
     token=os.getenv("DISCORD_TOKEN") or "",
-    intents=interactions.Intents.DEFAULT | interactions.Intents.GUILD_MESSAGE_CONTENT,
+    intents=interactions.Intents.DEFAULT,
 )
 TIMERS = {}
 
@@ -230,7 +230,7 @@ class Timer:
         if minutes > 59:
             minutes = 0
         hours = round((time - minutes * 60 - seconds) / 3600)
-        if time > 3600:
+        if time > 3569:
             return f"{hours}:{minutes:0>2} remaining"
         if time > DISPLAY_SECONDS:
             return f"{minutes} minutes remaining"

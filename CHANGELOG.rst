@@ -4,8 +4,8 @@ Changelog
 1.1 (unreleased)
 ----------------
 
-- Nothing changed yet.
-
+- Fix connection (no guild message access)
+- Fix time boundary display (exactly 1 hour was not displayed properly)
 
 1.0 (2022-08-27)
 ----------------
