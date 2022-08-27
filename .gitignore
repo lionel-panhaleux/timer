@@ -10,3 +10,6 @@ dist/
 .env
 .venv
 venv/
+
+# IDEs
+.vscode/

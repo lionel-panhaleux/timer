@@ -1,42 +1,28 @@
+from typing import Union
 import asyncio
 import logging
 import os
-import re
 
-import discord
-from discord.errors import DiscordException
+import interactions
+
 
 logger = logging.getLogger()
-client = discord.Client()
-client.TIMERS = {}
-
-
-@client.event
-async def on_ready():
-    """Login success informative log."""
-    logger.info(f"Logged in as {client.user}")
-
-
-#: regex use to parse time expression for timer initialisation
-REGEX = (
-    r"^\s*(?P<high>\d{1,2})"
-    r"\s*((?P<fraction>\.\d+)|(?P<separator>:|')(?P<low>\d{1,2})?)?"
-    r"\s*(?P<unit>h|hour|mn|min|minute|s|second)?s?\s*'*\s*$"
+bot = interactions.Client(
+    token=os.getenv("DISCORD_TOKEN") or "",
+    intents=interactions.Intents.DEFAULT | interactions.Intents.GUILD_MESSAGE_CONTENT,
 )
+TIMERS = {}
 
-#: multipliers for accepted time units
-MULTIPLIER = {
-    "h": 3600,
-    "hour": 3600,
-    "mn": 60,
-    "min": 60,
-    "minute": 60,
-    "s": 1,
-    "second": 1,
-}
+
+@bot.event
+async def on_ready():
+    """Login success"""
+    logger.info(f"Logged in as {bot.me.name}")
+
 
 #: fixed list of times on which to send a notification
 THRESHOLDS = [
+    0,  # finished
     1 * 60,  # 1min
     5 * 60,  # 5min
     15 * 60,  # 15min
@@ -66,12 +52,12 @@ PAUSE_TIMEOUT = 1800
 
 #: help message for a running timer
 RUNNING_TIMER_HELP = (
-    "- `timer` to display it anew\n"
-    "- `timer stop` to terminate it\n"
-    "- `timer pause` to pause\n"
-    "- `timer resume` to resume\n"
-    "- `timer add 5` to add 5mn to it\n"
-    "- `timer sub 1h` to substract 1h from it\n"
+    "- `/timer display` to display it anew\n"
+    "- `/timer pause` to pause\n"
+    "- `/timer resume` to resume\n"
+    "- `/timer stop` to terminate it\n"
+    "- `/timer add` to add time to it\n"
+    "- `/timer sub` to substract time from it\n"
 )
 
 
@@ -91,96 +77,58 @@ class Timer:
                 self.thresholds.append(limit)
         # internals
         self.message = None
-        self.reaction_future = None  # waiting for user reaction on embed
-        self.unpause_future = None  # waiting for remove reaction to unpause
+        self.run_future = None  # timer itself
+        self.countdown_future = None  # waiting for time to refresh
+        self.resume_future = None  # waiting for resume
 
     async def countdown(self):
         """Countdown: update embed, send notifications"""
         while self.time_left > 0:
+            # update time_left
+            if not self.resume_future:
+                self.time_left = max(
+                    0,
+                    self.total_time - max(0, bot._loop.time() - self.start_time),
+                )
+            await self._send_or_update_message()
             # update frequency depends on time left
-            if self.time_left < DISPLAY_SECONDS:
-                # minimum because of Discord rate limitation
-                await asyncio.sleep(1)
+            if self.resume_future:
+                paused_time = bot._loop.time()
+                try:
+                    logging.debug(f"[{self.log_prefix}] Wait for resume")
+                    await self.resume_future
+                except asyncio.CancelledError:
+                    logging.debug(f"[{self.log_prefix}] Pause cancelled - resume")
+                except asyncio.TimeoutError:
+                    logging.debug(f"[{self.log_prefix}] Pause timed out - resume")
+                finally:  # in any case resume.
+                    logging.debug(f"[{self.log_prefix}] Timer resume")
+                    self.resume_future = None
+                    self.start_time += bot._loop.time() - paused_time
             else:
-                await asyncio.sleep(30)
-            if self.unpause_future:
-                continue
-            await self.update_time_left()
-            # update the embed, send a notification if we have hit a threshold
-            if self.message:
-                try:
-                    await self.message.edit(embed=self.embed())
-                except discord.errors.NotFound:
-                    pass
-            if self.thresholds and self.thresholds[-1] >= self.time_left:
-                await self.channel.send(
-                    f"{self.author.mention} {self._time_str(self.thresholds.pop())}"
-                )
-        await self.stop()
-
-    async def update_time_left(self):
-        """Used by refresh and countdown."""
-        self.time_left = max(
-            0,
-            self.total_time - max(0, client.loop.time() - self.start_time),
-        )
-
-    async def wait_reaction(self):
-        """Displays the message, wait for a "pause" or "stop" reactions."""
-        while self.time_left > 0:
-            if not self.message:
-                self.message = await self.channel.send(embed=self.embed())
-                logging.info(f"[{self.log_prefix}] New embed")
-                try:
-                    for reaction in ["⏱", "🛑"]:
-                        await self.message.add_reaction(reaction)
-                except discord.Forbidden:
-                    logging.warning(f"[{self.log_prefix}] Missing reaction permission")
-            self.reaction_future = asyncio.ensure_future(
-                client.wait_for(
-                    # use raw event, do not trust the internal message cache
-                    "raw_reaction_add",
-                    # avoid timeouting before countdown finishes, even if paused
-                    timeout=self.time_left + PAUSE_TIMEOUT + 60,
-                    check=lambda payload: (
-                        payload.message_id == self.message.id
-                        and str(payload.emoji) in ["⏱", "🛑"]
-                        and payload.user_id != client.user.id
-                    ),
-                )
-            )
-            self.refreshing = False
-            try:
-                payload = await self.reaction_future
-                user = client.get_user(payload.user_id)
-            except asyncio.CancelledError:  # refresh, stop
-                logging.info(f"[{self.log_prefix}] Cancelled")
-                # if refreshing, do not stop
-                if self.refreshing:
-                    continue
+                if self.time_left < DISPLAY_SECONDS:
+                    # minimum because of Discord rate limitation
+                    self.countdown_future = asyncio.ensure_future(asyncio.sleep(1.1))
                 else:
-                    raise
-            except asyncio.TimeoutError:  # timeout, should not happen, just continue
-                logging.info(f"[{self.log_prefix}] Timed out")
-                continue
-            self.reaction_future = None
-            if str(payload.emoji) == "🛑":
-                logger.info(
-                    f"[{self.log_prefix}] ({user or payload.user_id}) reaction stop"
-                )
-                await self.stop()
-                return
-            if str(payload.emoji) == "⏱":
-                logger.info(
-                    f"[{self.log_prefix}] ({user or payload.user_id}) reaction pause"
-                )
-                await self.pause(payload.user_id)
+                    self.countdown_future = asyncio.ensure_future(asyncio.sleep(30))
+                try:
+                    logging.debug(f"[{self.log_prefix}] Wait for countdown")
+                    await self.countdown_future
+                except asyncio.CancelledError:
+                    logging.debug(f"[{self.log_prefix}] Countdown canceled")
+                finally:  # in any case resume.
+                    self.countdown_future = None
+        # final "Finished" update
+        if self.time_left < 0:
+            return
+        await self._send_or_update_message()
 
     async def run(self):
         """Run the timer, update the client.TIMERS map accordingly."""
-        client.TIMERS[self.channel] = self
-        self.start_time = client.loop.time()
-        self.run_future = asyncio.gather(self.countdown(), self.wait_reaction())
+        logging.debug(f"[{self.log_prefix}] Run")
+        TIMERS[self.channel] = self
+        self.start_time = bot._loop.time()
+        self.run_future = asyncio.ensure_future(self.countdown())
         try:
             await self.run_future
         except asyncio.CancelledError:
@@ -191,96 +139,82 @@ class Timer:
             await self.stop()
         except Exception:
             logger.exception(f"[{self.log_prefix}] Unhandled exception")
-            client.loop.stop()
+            raise
         finally:
-            del client.TIMERS[self.channel]
+            del TIMERS[self.channel]
 
     async def stop(self):
-        """Stops the timer. Used internally but can be called externally."""
+        """Stops the timer. To be called externally."""
+        logging.debug(f"[{self.log_prefix}] Stop")
         if self.time_left > 0:
             await self.channel.send("Stopped with " + self.time_str())
-        else:
-            await self.channel.send(f"{self.author.mention} Finished")
-        self.time_left = 0
+        self.time_left = -1
         logger.info(f"[{self.log_prefix}] Timer stopped")
-        self.run_future.cancel()
+        if self.countdown_future:
+            self.countdown_future.cancel()
+        if self.resume_future:
+            self.resume_future.cancel()
         if self.message:
             await self.message.delete()
             self.message = None
 
-    async def pause(self, user_id):
+    async def pause(self):
         """Pauses the timer. Used internally but can be called externally."""
-        if self.unpause_future:
+        # don't pause twice
+        if self.resume_future:
             return
-        paused_time = client.loop.time()
-        # beware: self.message can change in case of a refresh
-        paused_message = self.message
-        self.unpause_future = asyncio.ensure_future(
-            client.wait_for(
-                # use raw event, do not trust the internal message cache
-                "raw_reaction_remove",
-                timeout=PAUSE_TIMEOUT,
-                # only unpause if the initial user removes his reaction
-                check=lambda payload: (
-                    payload.message_id == paused_message.id
-                    and str(payload.emoji) == "⏱"
-                    and payload.user_id == user_id
-                ),
-            )
-        )
-        if paused_message:
-            await paused_message.edit(embed=self.embed())
-            await paused_message.remove_reaction("🛑", client.user)
-        user = client.get_user(user_id)
-        if user_id != self.author.id:
-            if user:
-                message = f"{self.author.mention} paused by {user.mention}"
-            else:
-                message = f"{self.author.mention} paused by <@{user_id}>"
-            await self.channel.send(message)
+        logging.debug(f"[{self.log_prefix}] Pause")
+        self.resume_future = asyncio.ensure_future(asyncio.sleep(PAUSE_TIMEOUT))
+        # cancel countdown
+        if self.countdown_future:
+            self.countdown_future.cancel()
+            self.countdown_future = None
 
-        try:
-            await self.unpause_future
-            logging.info(f"[{self.log_prefix}] ({user or user_id}) reaction unpause")
-        except asyncio.CancelledError:
-            logging.info(f"[{self.log_prefix}] Pause cancelled - resume")
-        except asyncio.TimeoutError:
-            logging.info(f"[{self.log_prefix}] Pause timed out - resume")
-        finally:  # in any case resume.
-            logging.info(f"[{self.log_prefix}] Timer resume")
-            self.unpause_future = None
-            self.start_time += client.loop.time() - paused_time
-        try:
-            await paused_message.edit(embed=self.embed())
-            await paused_message.add_reaction("🛑")
-        # in case of a refresh, paused_message may have been deleted
-        except discord.errors.NotFound:
-            pass
-
-    async def refresh(self):
+    async def refresh(self, resume=True):
         """Display a new embed."""
-        self.refreshing = True
+        logging.debug(f"[{self.log_prefix}] Refresh")
         if self.message:
             await self.message.delete()
             self.message = None
-        if self.unpause_future:
-            self.unpause_future.cancel()
-        await self.update_time_left()
-        if self.reaction_future:
-            self.reaction_future.cancel()
+        if self.resume_future:
+            # this cancels the countdown_future internally
+            if resume:
+                self.resume_future.cancel()
+            else:
+                await self._send_or_update_message()
+        elif self.countdown_future:
+            self.countdown_future.cancel()
 
-    def embed(self):
+    async def _send_or_update_message(self):
         """The running timer embed"""
         if self.time_left < 1:
-            return discord.Embed(title="Finished")
-        if self.unpause_future:
-            title = "Timer paused: " if self.unpause_future else ""
-            description = "Click the ⏱reaction again to unpause."
+            title = "Timer finished"
+            components = []
+            description = "Use `/timer start` to start a new timer."
+        elif self.resume_future:
+            title = "Timer paused: " + self.time_str()
+            components = [button_resume, button_stop]
+            description = (
+                "Use the buttons or the `/timer` commands to manipulate the timer."
+            )
         else:
-            title = ""
-            description = "Click the ⏱reaction to pause, 🛑 to terminate."
-        title += self.time_str()
-        return discord.Embed.from_dict({"title": title, "description": description})
+            title = self.time_str()
+            components = [button_pause, button_stop]
+            description = (
+                "Use the buttons or the `/timer` commands to manipulate the timer."
+            )
+        embeds = [interactions.Embed(title=title, description=description)]
+        if self.message:
+            try:
+                await self.message.edit(embeds=embeds, components=components)
+            except interactions.LibraryException:
+                pass
+        else:
+            self.message = await self.channel.send(embeds=embeds, components=components)
+        if self.thresholds and self.thresholds[-1] >= self.time_left >= 0:
+            await self.channel.send(
+                f"{self.author.mention} {self._time_str(self.thresholds.pop())}"
+            )
 
     def time_str(self):
         """Time string for the current time left."""
@@ -292,127 +226,269 @@ class Timer:
         if time > 3600:
             return f"{int(time / 3600):0>2}:{round(time % 3600 / 60):0>2} remaining"
         if time > DISPLAY_SECONDS:
-            return f"{int(time / 60)} minutes remaining"
+            return f"{round(time / 60)} minutes remaining"
         if time >= 60:
             return f"{int(time / 60)}′ {round(time % 60):0>2}″ remaining"
-        return f"{round(time)} seconds remaining"
+        if time > 0:
+            return f"{round(time)} seconds remaining"
+        return "time!"
 
 
-@client.event
-async def on_message(message):
+@bot.event(name="on_message_create")
+async def on_message_create(message: interactions.Message):
     """Main message loop"""
-    if message.author == client.user:
-        return
-    if not message.content.lower().startswith("timer"):
+    if message.author.id == bot.me.id:
         return
 
-    content = message.content[5:].strip()
-    if message.guild:
-        prefix = f"{message.guild.name}"
-        prefix += f":{message.channel.name}"
-    else:
-        prefix = f"{message.author.name}"
-    logger.info(f"[{prefix}] Received: {content}")
-    # timer already running in channel
-    if message.channel in client.TIMERS:
-        timer = client.TIMERS[message.channel]
-        if content:
-            if content.lower() == "stop":
-                await timer.stop()
-            elif content.lower() == "resume":
-                await timer.refresh()
-                logger.info(f"[{prefix}] Refreshed and resumed")
-            elif content.lower() == "pause":
-                await timer.pause(message.author)
-                logger.info(f"[{prefix}] Paused")
-            elif content.lower()[:4] == "add ":
-                content = content[4:]
-                time = get_initial_time(content, default="minute")
-                timer.total_time += time
-                await timer.refresh()
-                logger.info(f"[{prefix}] Added {time} and refreshed")
-            elif content.lower()[:4] == "sub ":
-                content = content[4:]
-                time = get_initial_time(content, default="minute")
-                timer.total_time -= time
-                await timer.refresh()
-                logger.info(f"[{prefix}] Substracted {time} and refreshed")
-            else:
-                await message.channel.send(
-                    embed=discord.Embed(
-                        title="Timer already running", description=RUNNING_TIMER_HELP
-                    )
-                )
-        else:
-            if timer.unpause_future:
-                await message.channel.send(
-                    embed=discord.Embed(
-                        title="Timer paused with " + timer.time_str(),
-                        description=(
-                            "- `timer resume` to resume and display it anew\n"
-                            "- `timer stop` to terminate it\n"
-                        ),
-                    )
-                )
-            else:
-                await timer.refresh()
-                logger.info(f"[{prefix}] Refreshed")
-        return
-    # no timer running in channel
-    total_time = get_initial_time(content)
-    if total_time:
-        timer = Timer(message.channel, message.author, total_time, prefix)
-        await timer.run()
-        logger.info(f"[{prefix}] Initial timer finished")
-    # if parsing fails, display help
-    # ignore message with more the 2 words
-    else:
-        if len(content.split()) > 2:
-            return
-        await message.channel.send(
-            embed=discord.Embed.from_dict(
-                {
-                    "title": "Usage",
-                    "fields": [
-                        {
-                            "name": "Start a timer",
-                            "value": (
-                                "- `timer 2h` starts a 2 hours timer\n"
-                                "- `timer 2.5` starts a 2 hours 30 minutes timer\n"
-                                "- `timer 2:45` starts a 2 hours 45 minutes timer\n"
-                                "- `timer 30mn` starts a 30 minutes timer\n"
-                                "- `timer 1'20` starts a 1 minutes 20 seconds timer\n"
-                            ),
-                        },
-                        {"name": "Once a timer runs", "value": RUNNING_TIMER_HELP},
-                    ],
-                }
-            )
+    if message.content.lower().startswith("timer "):
+        await message.reply(
+            "This bot switched to slash commands. Use `/timer` instead."
         )
 
 
-def get_initial_time(message, default="hour"):
-    """Get initial time from message content"""
-    message = message.lower()
-    match = re.match(REGEX, message.lower())
-    if not match:
+@bot.command(name="timer")
+async def base_timer_command(ctx: interactions.CommandContext):
+    pass
+
+
+def _get_prefix(ctx: interactions.CommandContext):
+    """Prefix used for log messages"""
+    if ctx.guild:
+        prefix = f"{ctx.guild.name}"
+        prefix += f":{ctx.channel.name}"
+    else:
+        prefix = f"{ctx.author.name}"
+    return prefix
+
+
+@base_timer_command.subcommand(
+    name="start",
+    description="Start a timer",
+    options=[
+        interactions.Option(
+            name="hours",
+            description="Number of hours",
+            type=interactions.OptionType.INTEGER,
+            required=True,
+            min_value=0,
+            max_value=24,
+        ),
+        interactions.Option(
+            name="minutes",
+            description="Number of minutes",
+            type=interactions.OptionType.INTEGER,
+            required=False,
+            min_value=0,
+            max_value=59,
+        ),
+    ],
+)
+async def timer_start(ctx: interactions.CommandContext, hours: int, minutes: int = 0):
+    """Start a timer"""
+    prefix = _get_prefix(ctx)
+    # timer already running in channel
+    if ctx.channel in TIMERS:
+        await ctx.send(
+            embeds=[
+                interactions.Embed(
+                    title="Timer already running", description=RUNNING_TIMER_HELP
+                )
+            ],
+            ephemeral=True,
+        )
         return
-    match = match.groupdict()
-    try:
-        multiplier = MULTIPLIER[match.get("unit") or default]
-    except KeyError:
+    # no timer running in channel
+    total_time = hours * 3600 + minutes * 60
+    if total_time:
+        timer = Timer(ctx.channel, ctx.author, total_time, prefix)
+        await ctx.send("Starting Timer", ephemeral=True)
+        logger.info(f"[{prefix}] Start timer: {hours}h {minutes}min")
+        await timer.run()
+        logger.info(f"[{prefix}] Timer finished")
+    else:
+        await ctx.send(
+            embeds=[
+                interactions.Embed(
+                    title="No time",
+                    description="Hours and minutes cannot both be zero.",
+                )
+            ],
+            ephemeral=True,
+        )
+
+
+@base_timer_command.subcommand(name="pause", description="pause the timer")
+async def timer_pause(ctx: interactions.CommandContext):
+    """Pause the timer"""
+    await _pause_timer(ctx)
+
+
+@base_timer_command.subcommand(name="resume", description="resume the timer")
+async def timer_resume(ctx: interactions.CommandContext):
+    """Resume the timer"""
+    await _resume_timer(ctx)
+
+
+@base_timer_command.subcommand(name="stop", description="stop the timer")
+async def timer_stop(ctx: interactions.CommandContext):
+    """Stop the timer"""
+    await _stop_timer(ctx)
+
+
+@base_timer_command.subcommand(
+    name="add",
+    description="Add time",
+    options=[
+        interactions.Option(
+            name="minutes",
+            description="Number of minutes",
+            type=interactions.OptionType.INTEGER,
+            required=True,
+            min_value=1,
+            max_value=1440,
+        ),
+    ],
+)
+async def timer_add(ctx: interactions.CommandContext, minutes: int):
+    """Add time to the timer"""
+    timer = TIMERS.get(ctx.channel, None)
+    if not timer:
+        ctx.send("No timer running in this channel.", ephemeral=True)
         return
-    if not match.get("unit") and match.get("separator") == "'":
-        multiplier = MULTIPLIER["minute"]
-    time = int(match.get("high") or 2) * multiplier
-    time += float(match.get("fraction") or 0) * multiplier
-    if multiplier > 1:
-        time += int(match.get("low") or 0) * multiplier / 60
-    return time
+    prefix = _get_prefix(ctx)
+    time = minutes * 60
+    timer.total_time += time
+    timer.time_left += time
+    await timer.refresh(resume=False)
+    logger.info(f"[{prefix}] Added {time//60}min and refreshed")
+    await ctx.send(f"Time added ({minutes}min)")
+
+
+@base_timer_command.subcommand(
+    name="sub",
+    description="Substract time",
+    options=[
+        interactions.Option(
+            name="minutes",
+            description="Number of minutes",
+            type=interactions.OptionType.INTEGER,
+            required=True,
+            min_value=1,
+            max_value=1440,
+        ),
+    ],
+)
+async def timer_sub(ctx: interactions.CommandContext, minutes: int):
+    """Substract time from the timer"""
+    timer = TIMERS.get(ctx.channel, None)
+    if not timer:
+        ctx.send("No timer running in this channel.", ephemeral=True)
+        return
+    prefix = _get_prefix(ctx)
+    time = minutes * 60
+    timer.total_time -= time
+    timer.time_left -= time
+    await timer.refresh(resume=False)
+    logger.info(f"[{prefix}] Substracted {time//60}min and refreshed")
+    await ctx.send(f"Time substracted ({minutes}min)")
+
+
+@base_timer_command.subcommand(name="display", description="Display the timer anew")
+async def timer_display(ctx: interactions.CommandContext):
+    """Discplay the timer anew"""
+    timer = TIMERS.get(ctx.channel, None)
+    if not timer:
+        ctx.send("No timer running in this channel.", ephemeral=True)
+        return
+    prefix = _get_prefix(ctx)
+    await timer.refresh(resume=False)
+    await ctx.send("Timer displayed", ephemeral=True)
+    logger.info(f"[{prefix}] Refreshed")
+
+
+button_pause = interactions.Button(
+    style=interactions.ButtonStyle.PRIMARY,
+    label="Pause",
+    custom_id="pause",
+    emoji=interactions.Emoji(name="⏱"),
+)
+
+button_resume = interactions.Button(
+    style=interactions.ButtonStyle.SUCCESS,
+    label="Resume",
+    custom_id="resume",
+    emoji=interactions.Emoji(name="▶️"),
+)
+
+button_stop = interactions.Button(
+    style=interactions.ButtonStyle.DANGER,
+    label="Stop",
+    custom_id="stop",
+    emoji=interactions.Emoji(name="🛑"),
+)
+
+
+@bot.component("pause")
+async def button_pause_response(ctx: interactions.ComponentContext):
+    await _pause_timer(ctx)
+
+
+@bot.component("resume")
+async def button_resume_response(ctx: interactions.ComponentContext):
+    await _resume_timer(ctx)
+
+
+@bot.component("stop")
+async def button_stop_response(ctx: interactions.ComponentContext):
+    await _stop_timer(ctx)
+
+
+async def _pause_timer(
+    ctx: Union[interactions.CommandContext, interactions.ComponentContext]
+):
+    timer = TIMERS.get(ctx.channel, None)
+    if not timer:
+        ctx.send("No timer running in this channel.", ephemeral=True)
+        return
+    prefix = _get_prefix(ctx)
+    await timer.pause()
+    logger.info(f"[{prefix}] Paused")
+    if ctx.author.id != timer.author.id:
+        ephemeral = False
+        message = f"{timer.author.mention} timer paused by {ctx.author.mention}"
+    else:
+        ephemeral = True
+        message = f"Timer paused"
+    await ctx.send(message, ephemeral=ephemeral)
+
+
+async def _resume_timer(
+    ctx: Union[interactions.CommandContext, interactions.ComponentContext]
+):
+    timer = TIMERS.get(ctx.channel, None)
+    if not timer:
+        ctx.send("No timer running in this channel.", ephemeral=True)
+        return
+    prefix = _get_prefix(ctx)
+    await timer.refresh()
+    await ctx.send("Timer resumed", ephemeral=True)
+    logger.info(f"[{prefix}] Refreshed and resumed")
+
+
+async def _stop_timer(
+    ctx: Union[interactions.CommandContext, interactions.ComponentContext]
+):
+    timer = TIMERS.get(ctx.channel, None)
+    if not timer:
+        ctx.send("No timer running in this channel.", ephemeral=True)
+        return
+    await timer.stop()
+    await ctx.send("Timer stopped", ephemeral=True)
 
 
 def main():
     """Entrypoint"""
     logger.addHandler(logging.StreamHandler())
     logger.setLevel(logging.DEBUG if os.getenv("DEBUG") else logging.INFO)
-    client.run(os.getenv("DISCORD_TOKEN"))
+    bot.start()
+    logger.setLevel(logging.NOTSET)

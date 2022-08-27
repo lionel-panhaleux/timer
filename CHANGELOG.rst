@@ -1,11 +1,11 @@
 Changelog
 =========
 
-0.12 (unreleased)
+1.0 (unreleased)
 -----------------
 
-- Nothing changed yet.
-
+- Switch to slash commands
+- Use real buttons instead of reactions
 
 0.11 (2021-03-17)
 -----------------
