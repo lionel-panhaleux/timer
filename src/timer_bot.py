@@ -77,7 +77,6 @@ class Timer:
                 self.thresholds.append(limit)
         # internals
         self.message = None
-        self.run_future = None  # timer itself
         self.countdown_future = None  # waiting for time to refresh
         self.resume_future = None  # waiting for resume
 
@@ -128,9 +127,8 @@ class Timer:
         logging.debug(f"[{self.log_prefix}] Run")
         TIMERS[self.channel] = self
         self.start_time = bot._loop.time()
-        self.run_future = asyncio.ensure_future(self.countdown())
         try:
-            await self.run_future
+            await self.countdown()
         except asyncio.CancelledError:
             logger.info(f"[{self.log_prefix}] Timer cancelled")
             # at that point aiohttp may be closed in case of SIGINT/SIGTERM
