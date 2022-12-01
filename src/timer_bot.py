@@ -371,7 +371,10 @@ async def timer_add(ctx: interactions.CommandContext, minutes: int):
     """Add time to the timer"""
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
-        ctx.send("No timer running in this channel.", ephemeral=True)
+        await ctx.send(
+            "No timer running in this channel. Use `/timer start` to start one.",
+            ephemeral=True,
+        )
         return
     prefix = _get_prefix(ctx)
     time = minutes * 60
@@ -400,7 +403,10 @@ async def timer_sub(ctx: interactions.CommandContext, minutes: int):
     """Substract time from the timer"""
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
-        ctx.send("No timer running in this channel.", ephemeral=True)
+        await ctx.send(
+            "No timer running in this channel. Use `/timer start` to start one.",
+            ephemeral=True,
+        )
         return
     prefix = _get_prefix(ctx)
     time = minutes * 60
@@ -416,7 +422,10 @@ async def timer_display(ctx: interactions.CommandContext):
     """Discplay the timer anew"""
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
-        ctx.send("No timer running in this channel.", ephemeral=True)
+        await ctx.send(
+            "No timer running in this channel. Use `/timer start` to start one.",
+            ephemeral=True,
+        )
         return
     prefix = _get_prefix(ctx)
     await timer.refresh(resume=False)
@@ -466,7 +475,10 @@ async def _pause_timer(
 ):
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
-        ctx.send("No timer running in this channel.", ephemeral=True)
+        await ctx.send(
+            "No timer running in this channel. Use `/timer start` to start one.",
+            ephemeral=True,
+        )
         return
     prefix = _get_prefix(ctx)
     await timer.pause()
@@ -485,7 +497,10 @@ async def _resume_timer(
 ):
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
-        ctx.send("No timer running in this channel.", ephemeral=True)
+        await ctx.send(
+            "No timer running in this channel. Use `/timer start` to start one.",
+            ephemeral=True,
+        )
         return
     prefix = _get_prefix(ctx)
     await timer.refresh()
@@ -498,7 +513,10 @@ async def _stop_timer(
 ):
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
-        ctx.send("No timer running in this channel.", ephemeral=True)
+        await ctx.send(
+            "No timer running in this channel. Use `/timer start` to start one.",
+            ephemeral=True,
+        )
         return
     await timer.stop()
     await ctx.send("Timer stopped", ephemeral=True)
