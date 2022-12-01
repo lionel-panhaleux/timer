@@ -27,21 +27,6 @@ THRESHOLDS = [
     5 * 60,  # 5min
     15 * 60,  # 15min
     30 * 60,  # 30min
-    1 * 3600,  # 1h
-    2 * 3600,  # 2h
-    3 * 3600,  # ...
-    4 * 3600,
-    5 * 3600,
-    6 * 3600,
-    7 * 3600,
-    8 * 3600,
-    9 * 3600,
-    10 * 3600,
-    11 * 3600,
-    12 * 3600,
-    24 * 3600,
-    36 * 3600,
-    48 * 3600,
 ]
 
 #: timer embed will display seconds starting from this point int time
@@ -75,6 +60,9 @@ class Timer:
         for limit in THRESHOLDS:
             if time > limit:
                 self.thresholds.append(limit)
+        # add a threshold on every hour
+        for limit in range(1, time // 3600 + 1):
+            self.thresholds.append(limit * 3600)
         # internals
         self.message = None
         self.countdown_future = None  # waiting for time to refresh
@@ -140,7 +128,7 @@ class Timer:
             del TIMERS[self.channel]
 
     async def stop(self):
-        """Stops the timer. To be called externally."""
+        """Stops the timer."""
         logging.debug(f"[{self.log_prefix}] Stop")
         if self.time_left > 0:
             await self.channel.send("Stopped with " + self.time_str())
@@ -155,7 +143,7 @@ class Timer:
             self.message = None
 
     async def pause(self):
-        """Pauses the timer. Used internally but can be called externally."""
+        """Pauses the timer."""
         # don't pause twice
         if self.resume_future:
             return
