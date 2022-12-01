@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.3 (unreleased)
+1.3 (2022-12-01)
 ----------------
 
 - Fix error messages when there's no timer running
