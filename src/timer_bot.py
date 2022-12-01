@@ -118,8 +118,6 @@ class Timer:
                 finally:  # in any case resume.
                     self.countdown_future = None
         # final "Finished" update
-        if self.time_left < 0:
-            return
         await self._send_or_update_message()
 
     async def run(self):

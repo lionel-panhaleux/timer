@@ -4,7 +4,7 @@ Changelog
 1.4 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Fix timer update when finishing (display as finished, not with 1 or 2 seconds left)
 
 
 1.3 (2022-12-01)
