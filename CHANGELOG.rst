@@ -5,7 +5,7 @@ Changelog
 ----------------
 
 - Fix timer update when finishing (display as finished, not with 1 or 2 seconds left)
-
+- Add "secured" option so that only the owner can modify the timer
 
 1.3 (2022-12-01)
 ----------------

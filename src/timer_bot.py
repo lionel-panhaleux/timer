@@ -49,9 +49,10 @@ RUNNING_TIMER_HELP = (
 class Timer:
     """Timer object: one per channel"""
 
-    def __init__(self, channel, author, time, log_prefix=""):
+    def __init__(self, channel, author, time, secured, log_prefix=""):
         self.channel = channel
         self.author = author
+        self.secured = secured
         self.start_time = 0
         self.total_time = time
         self.time_left = time
@@ -277,9 +278,20 @@ def _get_prefix(ctx: interactions.CommandContext):
             min_value=0,
             max_value=59,
         ),
+        interactions.Option(
+            name="secured",
+            description="Only the owner can modify a secure timer (default false)",
+            type=interactions.OptionType.BOOLEAN,
+            required=False,
+        ),
     ],
 )
-async def timer_start(ctx: interactions.CommandContext, hours: int, minutes: int = 0):
+async def timer_start(
+    ctx: interactions.CommandContext,
+    hours: int,
+    minutes: int = 0,
+    secured: bool = False,
+):
     """Start a timer"""
     # channel info will miss from threads and voice channels chats
     # see https://github.com/interactions-py/library/issues/1041
@@ -302,7 +314,7 @@ async def timer_start(ctx: interactions.CommandContext, hours: int, minutes: int
     # no timer running in channel
     total_time = hours * 3600 + minutes * 60
     if total_time:
-        timer = Timer(ctx.channel, ctx.author, total_time, prefix)
+        timer = Timer(ctx.channel, ctx.author, total_time, secured, prefix)
         await ctx.send("Starting Timer", ephemeral=True)
         logger.info(f"[{prefix}] Start timer: {hours}h {minutes}min")
         await timer.run()
@@ -361,6 +373,11 @@ async def timer_add(ctx: interactions.CommandContext, minutes: int):
         )
         return
     prefix = _get_prefix(ctx)
+    if timer.secured and ctx.author.id != timer.author.id:
+        await ctx.send(
+            "This is a secured timer, only the owner can modify it.", ephemeral=True
+        )
+        return
     time = minutes * 60
     timer.total_time += time
     timer.time_left += time
@@ -393,6 +410,11 @@ async def timer_sub(ctx: interactions.CommandContext, minutes: int):
         )
         return
     prefix = _get_prefix(ctx)
+    if timer.secured and ctx.author.id != timer.author.id:
+        await ctx.send(
+            "This is a secured timer, only the owner can modify it.", ephemeral=True
+        )
+        return
     time = minutes * 60
     timer.total_time -= time
     timer.time_left -= time
@@ -465,6 +487,11 @@ async def _pause_timer(
         )
         return
     prefix = _get_prefix(ctx)
+    if timer.secured and ctx.author.id != timer.author.id:
+        await ctx.send(
+            "This is a secured timer, only the owner can pause it.", ephemeral=True
+        )
+        return
     await timer.pause()
     logger.info(f"[{prefix}] Paused")
     if ctx.author.id != timer.author.id:
@@ -487,6 +514,11 @@ async def _resume_timer(
         )
         return
     prefix = _get_prefix(ctx)
+    if timer.secured and ctx.author.id != timer.author.id:
+        await ctx.send(
+            "This is a secured timer, only the owner can resume it.", ephemeral=True
+        )
+        return
     await timer.refresh()
     await ctx.send("Timer resumed", ephemeral=True)
     logger.info(f"[{prefix}] Refreshed and resumed")
@@ -500,6 +532,11 @@ async def _stop_timer(
         await ctx.send(
             "No timer running in this channel. Use `/timer start` to start one.",
             ephemeral=True,
+        )
+        return
+    if timer.secured and ctx.author.id != timer.author.id:
+        await ctx.send(
+            "This is a secured timer, only the owner can stop it.", ephemeral=True
         )
         return
     await timer.stop()
