@@ -1,11 +1,14 @@
 Changelog
 =========
 
-1.4 (unreleased)
+2.0 (unreleased)
 ----------------
 
+- Updated to hikari (up-to-date discord python lib)
 - Fix timer update when finishing (display as finished, not with 1 or 2 seconds left)
 - Add "secured" option so that only the owner can modify the timer
+- Tiny improvements on the timer logic (more precise finish)
+- Graceful shutdown (all timers stop rather than being left hanging)
 
 1.3 (2022-12-01)
 ----------------

@@ -7,4 +7,4 @@ serve:
 	source .env && timer-bot
 
 update:
-	pip install --upgrade -e .[dev]
+	pip install --upgrade --upgrade-strategy eager -e ".[dev]"
