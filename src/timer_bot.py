@@ -551,6 +551,6 @@ async def _stop_timer(
 def main():
     """Entrypoint"""
     logger.addHandler(logging.StreamHandler())
-    logger.setLevel(logging.DEBUG if os.getenv("DEBUG") else logging.INFO)
+    logger.setLevel(logging.DEBUG if __debug__ else logging.INFO)
     bot.start()
     logger.setLevel(logging.NOTSET)
