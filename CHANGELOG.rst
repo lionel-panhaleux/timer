@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.4 (unreleased)
+1.4 (2023-11-03)
 ----------------
 
 - Fix timer update when finishing (display as finished, not with 1 or 2 seconds left)
