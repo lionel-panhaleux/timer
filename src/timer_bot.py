@@ -317,7 +317,12 @@ async def timer_start(
         timer = Timer(ctx.channel, ctx.author, total_time, secured, prefix)
         await ctx.send("Starting Timer", ephemeral=True)
         logger.info(f"[{prefix}] Start timer: {hours}h {minutes}min")
-        await timer.run()
+        try:
+            await timer.run()
+        except interactions.LibraryException:
+            await ctx.edit(
+                "**Failed to start**\nTimer bot requires permission to send messages"
+            )
         logger.info(f"[{prefix}] Timer finished")
     else:
         await ctx.send(
