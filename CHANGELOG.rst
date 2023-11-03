@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.5 (unreleased)
+1.5 (2023-11-03)
 ----------------
 
 - Bump discord-py-interactions version
