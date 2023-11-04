@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.6 (unreleased)
+1.6 (2023-11-04)
 ----------------
 
 - Fix timer updater after 1h (new Discord limitation)
