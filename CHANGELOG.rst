@@ -4,7 +4,7 @@ Changelog
 1.6 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Fix timer updater after 1h (new Discord limitation)
 
 
 1.5 (2023-11-03)

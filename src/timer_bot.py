@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Optional, Union
 import asyncio
 import logging
 import os
@@ -65,7 +65,7 @@ class Timer:
         for limit in range(1, time // 3600 + 1):
             self.thresholds.append(limit * 3600)
         # internals
-        self.message = None
+        self.message: Optional[interactions.Message] = None
         self.countdown_future = None  # waiting for time to refresh
         self.resume_future = None  # waiting for resume
 
@@ -192,8 +192,16 @@ class Timer:
         if self.message:
             try:
                 await self.message.edit(embeds=embeds, components=components)
-            except interactions.LibraryException:
-                pass
+            # messages older than 1h cannot be edited too much, at some point it fails
+            except interactions.LibraryException as e:
+                old_message = self.message
+                self.message = await self.channel.send(
+                    embeds=embeds, components=components
+                )
+                try:
+                    await old_message.delete()
+                except interactions.LibraryException:
+                    pass
         else:
             self.message = await self.channel.send(embeds=embeds, components=components)
         if self.thresholds and self.thresholds[-1] >= self.time_left >= 0:
