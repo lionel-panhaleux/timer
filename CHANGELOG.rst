@@ -4,7 +4,7 @@ Changelog
 1.7 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Fix python 3.11 install for Debian 12
 
 
 1.6 (2023-11-04)

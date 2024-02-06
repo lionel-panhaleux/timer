@@ -194,13 +194,15 @@ class Timer:
                 await self.message.edit(embeds=embeds, components=components)
             # messages older than 1h cannot be edited too much, at some point it fails
             except interactions.LibraryException as e:
+                logger.info("Failed to edit message: %s", e)
                 old_message = self.message
                 self.message = await self.channel.send(
                     embeds=embeds, components=components
                 )
                 try:
                     await old_message.delete()
-                except interactions.LibraryException:
+                except interactions.LibraryException as e:
+                    logger.info("Failed to delete old message: %s", e)
                     pass
         else:
             self.message = await self.channel.send(embeds=embeds, components=components)
