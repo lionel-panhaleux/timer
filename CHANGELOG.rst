@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.7 (unreleased)
+1.7 (2024-02-06)
 ----------------
 
 - Fix python 3.11 install for Debian 12
