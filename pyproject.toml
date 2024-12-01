@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "timer-bot"
-version = "1.8.dev0"
+version = "1.8"
 authors = [
     { name = "Lionel Panhaleux", email = "lionel.panhaleux+timer@gmail.com" },
 ]

@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.8 (unreleased)
+1.8 (2024-12-01)
 ----------------
 
 - Upgrade to discord-py-interactions 5.13
