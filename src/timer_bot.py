@@ -76,9 +76,9 @@ class Timer:
         self.channel = channel
         self.author = author
         self.secured = secured
-        self.start_time = 0
-        self.total_time = 0
-        self.time_left = 0
+        self.start_time: float = 0
+        self.total_time: int = 0
+        self.time_left: float = 0
         self.log_prefix = log_prefix + "|internal"
         self.thresholds: list[int] = []
         self.adjust_time(time)
@@ -92,7 +92,7 @@ class Timer:
         self.time_left += time
         self.thresholds = [limit for limit in THRESHOLDS if self.time_left > limit]
         # add a threshold on every hour
-        for limit in range(1, self.time_left // 3600 + 1):
+        for limit in range(1, int(self.time_left // 3600) + 1):
             self.thresholds.append(limit * 3600)
 
     async def countdown(self):
