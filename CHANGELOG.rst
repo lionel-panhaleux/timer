@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.9 (unreleased)
+1.9 (2024-12-01)
 ----------------
 
 - Fix dependencies
