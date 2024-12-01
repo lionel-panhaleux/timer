@@ -4,7 +4,7 @@ Changelog
 1.9 (unreleased)
 ----------------
 
-- Nothing changed yet.
+- Fix dependencies
 
 
 1.8 (2024-12-01)
