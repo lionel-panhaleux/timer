@@ -5,19 +5,35 @@ import os
 
 import interactions
 
+import interactions.api.events
+import interactions.client.errors
+
 
 logger = logging.getLogger()
 bot = interactions.Client(
     token=os.getenv("DISCORD_TOKEN") or "",
-    intents=interactions.Intents.DEFAULT,
+    # intents=interactions.Intents.new(guild_messages=True),
+    delete_unused_application_cmds=True,
+    debug_scope=161406117686149120 if __debug__ else interactions.MISSING,
+    logging_level=logging.DEBUG if __debug__ else logging.INFO,
 )
-TIMERS = {}
 
 
-@bot.event
+@interactions.listen()
 async def on_ready():
     """Login success"""
-    logger.info(f"Logged in as {bot.me.name}")
+    logger.info(f"Logged in as {bot.user.username}")
+
+
+@interactions.listen()
+async def on_startup():
+    """Startup success"""
+    logger.info(f"Started")
+
+
+@interactions.listen()
+async def on_error(error: interactions.api.events.Error):
+    logger.error("API error: %s", error)
 
 
 #: fixed list of times on which to send a notification
@@ -49,39 +65,47 @@ RUNNING_TIMER_HELP = (
 class Timer:
     """Timer object: one per channel"""
 
-    def __init__(self, channel, author, time, secured, log_prefix=""):
+    def __init__(
+        self,
+        channel: interactions.GuildChannel,
+        author: interactions.Member,
+        time: int,
+        secured: bool,
+        log_prefix: str = "",
+    ):
         self.channel = channel
         self.author = author
         self.secured = secured
         self.start_time = 0
-        self.total_time = time
-        self.time_left = time
+        self.total_time = 0
+        self.time_left = 0
         self.log_prefix = log_prefix + "|internal"
-        self.thresholds = []
-        for limit in THRESHOLDS:
-            if time > limit:
-                self.thresholds.append(limit)
-        # add a threshold on every hour
-        for limit in range(1, time // 3600 + 1):
-            self.thresholds.append(limit * 3600)
+        self.thresholds: list[int] = []
+        self.adjust_time(time)
         # internals
         self.message: Optional[interactions.Message] = None
         self.countdown_future = None  # waiting for time to refresh
         self.resume_future = None  # waiting for resume
+
+    def adjust_time(self, time: int):
+        self.total_time += time
+        self.time_left += time
+        self.thresholds = [limit for limit in THRESHOLDS if self.time_left > limit]
+        # add a threshold on every hour
+        for limit in range(1, self.time_left // 3600 + 1):
+            self.thresholds.append(limit * 3600)
 
     async def countdown(self):
         """Countdown: update embed, send notifications"""
         while self.time_left > 0:
             # update time_left
             if not self.resume_future:
-                self.time_left = max(
-                    0,
-                    self.total_time - max(0, bot._loop.time() - self.start_time),
-                )
+                time_spent = max(0, asyncio.get_event_loop().time() - self.start_time)
+                self.time_left = max(0, self.total_time - time_spent)
             await self._send_or_update_message()
             # update frequency depends on time left
             if self.resume_future:
-                paused_time = bot._loop.time()
+                paused_time = asyncio.get_event_loop().time()
                 try:
                     logging.debug(f"[{self.log_prefix}] Wait for resume")
                     await self.resume_future
@@ -92,7 +116,7 @@ class Timer:
                 finally:  # in any case resume.
                     logging.debug(f"[{self.log_prefix}] Timer resume")
                     self.resume_future = None
-                    self.start_time += bot._loop.time() - paused_time
+                    self.start_time += asyncio.get_event_loop().time() - paused_time
             else:
                 if self.time_left < DISPLAY_SECONDS + 30:
                     # minimum because of Discord rate limitation
@@ -113,7 +137,7 @@ class Timer:
         """Run the timer, update the client.TIMERS map accordingly."""
         logging.debug(f"[{self.log_prefix}] Run")
         TIMERS[self.channel] = self
-        self.start_time = bot._loop.time()
+        self.start_time = asyncio.get_event_loop().time()
         try:
             await self.countdown()
         except asyncio.CancelledError:
@@ -191,7 +215,9 @@ class Timer:
         embeds = [interactions.Embed(title=title, description=description)]
         if self.message:
             try:
-                await self.message.edit(embeds=embeds, components=components)
+                self.message = await self.message.edit(
+                    embeds=embeds, components=components
+                )
             # messages older than 1h cannot be edited too much, at some point it fails
             except interactions.LibraryException as e:
                 logger.info("Failed to edit message: %s", e)
@@ -236,29 +262,15 @@ class Timer:
         return "time!"
 
 
-@bot.event(name="on_message_create")
-async def on_message_create(message: interactions.Message):
-    """Main message loop"""
-    if message.author.id == bot.me.id:
-        return
-
-    if message.content.lower().startswith("timer "):
-        await message.reply(
-            "This bot switched to slash commands. Use `/timer` instead."
-        )
+TIMERS: dict[interactions.Snowflake : Timer] = {}
+timer_base = interactions.SlashCommand(name="timer")
 
 
-@bot.command(name="timer")
-async def base_timer_command(ctx: interactions.CommandContext):
-    pass
-
-
-def _get_prefix(ctx: interactions.CommandContext):
+def _get_prefix(ctx: interactions.SlashContext):
     """Prefix used for log messages"""
     if ctx.guild:
         prefix = f"{ctx.guild.name}"
         logger.debug("CTX: %s", ctx)
-        logger.debug("extras: %s", ctx._extras)
         logger.debug("channel: %s", ctx.channel)
         logger.debug("channel_id: %s", ctx.channel_id)
         if ctx.channel:
@@ -268,36 +280,34 @@ def _get_prefix(ctx: interactions.CommandContext):
     return prefix
 
 
-@base_timer_command.subcommand(
-    name="start",
-    description="Start a timer",
-    options=[
-        interactions.Option(
-            name="hours",
-            description="Number of hours",
-            type=interactions.OptionType.INTEGER,
-            required=True,
-            min_value=0,
-            max_value=24,
-        ),
-        interactions.Option(
-            name="minutes",
-            description="Number of minutes",
-            type=interactions.OptionType.INTEGER,
-            required=False,
-            min_value=0,
-            max_value=59,
-        ),
-        interactions.Option(
-            name="secured",
-            description="Only the owner can modify a secure timer (default false)",
-            type=interactions.OptionType.BOOLEAN,
-            required=False,
-        ),
-    ],
+@timer_base.subcommand(
+    sub_cmd_name="start",
+    sub_cmd_description="Start a timer",
+)
+@interactions.slash_option(
+    name="hours",
+    opt_type=interactions.OptionType.INTEGER,
+    description="Number of hours",
+    required=True,
+    min_value=0,
+    max_value=24,
+)
+@interactions.slash_option(
+    name="minutes",
+    opt_type=interactions.OptionType.INTEGER,
+    description="Number of minutes",
+    required=False,
+    min_value=0,
+    max_value=59,
+)
+@interactions.slash_option(
+    name="secured",
+    opt_type=interactions.OptionType.BOOLEAN,
+    description="Only the owner can modify a secure timer (default false)",
+    required=False,
 )
 async def timer_start(
-    ctx: interactions.CommandContext,
+    ctx: interactions.SlashContext,
     hours: int,
     minutes: int = 0,
     secured: bool = False,
@@ -306,9 +316,7 @@ async def timer_start(
     # channel info will miss from threads and voice channels chats
     # see https://github.com/interactions-py/library/issues/1041
     if ctx.channel is interactions.MISSING:
-        ctx.channel = interactions.Channel(
-            _client=ctx.client, **(await ctx.client.get_channel(ctx.channel_id))
-        )
+        ctx.channel = await ctx.client.get_channel(ctx.channel_id)
     prefix = _get_prefix(ctx)
     # timer already running in channel
     if ctx.channel_id in TIMERS:
@@ -329,7 +337,7 @@ async def timer_start(
         logger.info(f"[{prefix}] Start timer: {hours}h {minutes}min")
         try:
             await timer.run()
-        except interactions.LibraryException:
+        except interactions.client.errors.LibraryException:
             await ctx.edit(
                 "**Failed to start**\nTimer bot requires permission to send messages"
             )
@@ -346,39 +354,37 @@ async def timer_start(
         )
 
 
-@base_timer_command.subcommand(name="pause", description="pause the timer")
-async def timer_pause(ctx: interactions.CommandContext):
+@timer_base.subcommand(sub_cmd_name="pause", sub_cmd_description="pause the timer")
+async def timer_pause(ctx: interactions.SlashContext):
     """Pause the timer"""
     await _pause_timer(ctx)
 
 
-@base_timer_command.subcommand(name="resume", description="resume the timer")
-async def timer_resume(ctx: interactions.CommandContext):
+@timer_base.subcommand(sub_cmd_name="resume", sub_cmd_description="resume the timer")
+async def timer_resume(ctx: interactions.SlashContext):
     """Resume the timer"""
     await _resume_timer(ctx)
 
 
-@base_timer_command.subcommand(name="stop", description="stop the timer")
-async def timer_stop(ctx: interactions.CommandContext):
+@timer_base.subcommand(sub_cmd_name="stop", sub_cmd_description="stop the timer")
+async def timer_stop(ctx: interactions.SlashContext):
     """Stop the timer"""
     await _stop_timer(ctx)
 
 
-@base_timer_command.subcommand(
-    name="add",
-    description="Add time",
-    options=[
-        interactions.Option(
-            name="minutes",
-            description="Number of minutes",
-            type=interactions.OptionType.INTEGER,
-            required=True,
-            min_value=1,
-            max_value=1440,
-        ),
-    ],
+@timer_base.subcommand(
+    sub_cmd_name="add",
+    sub_cmd_description="Add time",
 )
-async def timer_add(ctx: interactions.CommandContext, minutes: int):
+@interactions.slash_option(
+    name="minutes",
+    opt_type=interactions.OptionType.INTEGER,
+    description="Number of minutes",
+    required=True,
+    min_value=1,
+    max_value=1440,
+)
+async def timer_add(ctx: interactions.SlashContext, minutes: int):
     """Add time to the timer"""
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
@@ -393,29 +399,25 @@ async def timer_add(ctx: interactions.CommandContext, minutes: int):
             "This is a secured timer, only the owner can modify it.", ephemeral=True
         )
         return
-    time = minutes * 60
-    timer.total_time += time
-    timer.time_left += time
+    timer.adjust_time(minutes * 60)
     await timer.refresh(resume=False)
-    logger.info(f"[{prefix}] Added {time//60}min and refreshed")
+    logger.info(f"[{prefix}] Added {minutes}min and refreshed")
     await ctx.send(f"Time added ({minutes}min)")
 
 
-@base_timer_command.subcommand(
-    name="sub",
-    description="Substract time",
-    options=[
-        interactions.Option(
-            name="minutes",
-            description="Number of minutes",
-            type=interactions.OptionType.INTEGER,
-            required=True,
-            min_value=1,
-            max_value=1440,
-        ),
-    ],
+@timer_base.subcommand(
+    sub_cmd_name="sub",
+    sub_cmd_description="Substract time",
 )
-async def timer_sub(ctx: interactions.CommandContext, minutes: int):
+@interactions.slash_option(
+    name="minutes",
+    opt_type=interactions.OptionType.INTEGER,
+    description="Number of minutes",
+    required=True,
+    min_value=1,
+    max_value=1440,
+)
+async def timer_sub(ctx: interactions.SlashContext, minutes: int):
     """Substract time from the timer"""
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
@@ -430,16 +432,16 @@ async def timer_sub(ctx: interactions.CommandContext, minutes: int):
             "This is a secured timer, only the owner can modify it.", ephemeral=True
         )
         return
-    time = minutes * 60
-    timer.total_time -= time
-    timer.time_left -= time
+    timer.adjust_time(-minutes * 60)
     await timer.refresh(resume=False)
-    logger.info(f"[{prefix}] Substracted {time//60}min and refreshed")
+    logger.info(f"[{prefix}] Substracted {minutes}min and refreshed")
     await ctx.send(f"Time substracted ({minutes}min)")
 
 
-@base_timer_command.subcommand(name="display", description="Display the timer anew")
-async def timer_display(ctx: interactions.CommandContext):
+@timer_base.subcommand(
+    sub_cmd_name="display", sub_cmd_description="Display the timer anew"
+)
+async def timer_display(ctx: interactions.SlashContext):
     """Discplay the timer anew"""
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
@@ -458,41 +460,41 @@ button_pause = interactions.Button(
     style=interactions.ButtonStyle.PRIMARY,
     label="Pause",
     custom_id="pause",
-    emoji=interactions.Emoji(name="⏱"),
+    emoji=interactions.PartialEmoji.from_str("⏱"),
 )
 
 button_resume = interactions.Button(
     style=interactions.ButtonStyle.SUCCESS,
     label="Resume",
     custom_id="resume",
-    emoji=interactions.Emoji(name="▶️"),
+    emoji=interactions.PartialEmoji.from_str("▶️"),
 )
 
 button_stop = interactions.Button(
     style=interactions.ButtonStyle.DANGER,
     label="Stop",
     custom_id="stop",
-    emoji=interactions.Emoji(name="🛑"),
+    emoji=interactions.PartialEmoji.from_str("🛑"),
 )
 
 
-@bot.component("pause")
+@interactions.component_callback("pause")
 async def button_pause_response(ctx: interactions.ComponentContext):
     await _pause_timer(ctx)
 
 
-@bot.component("resume")
+@interactions.component_callback("resume")
 async def button_resume_response(ctx: interactions.ComponentContext):
     await _resume_timer(ctx)
 
 
-@bot.component("stop")
+@interactions.component_callback("stop")
 async def button_stop_response(ctx: interactions.ComponentContext):
     await _stop_timer(ctx)
 
 
 async def _pause_timer(
-    ctx: Union[interactions.CommandContext, interactions.ComponentContext]
+    ctx: Union[interactions.SlashContext, interactions.ComponentContext]
 ):
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
@@ -519,7 +521,7 @@ async def _pause_timer(
 
 
 async def _resume_timer(
-    ctx: Union[interactions.CommandContext, interactions.ComponentContext]
+    ctx: Union[interactions.SlashContext, interactions.ComponentContext]
 ):
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
@@ -540,7 +542,7 @@ async def _resume_timer(
 
 
 async def _stop_timer(
-    ctx: Union[interactions.CommandContext, interactions.ComponentContext]
+    ctx: Union[interactions.SlashContext, interactions.ComponentContext]
 ):
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
@@ -556,6 +558,20 @@ async def _stop_timer(
         return
     await timer.stop()
     await ctx.send("Timer stopped", ephemeral=True)
+
+
+bot.add_listener(on_ready)
+bot.add_listener(on_startup)
+bot.add_command(timer_start)
+bot.add_command(timer_stop)
+bot.add_command(timer_pause)
+bot.add_command(timer_resume)
+bot.add_command(timer_display)
+bot.add_command(timer_add)
+bot.add_command(timer_sub)
+bot.add_component_callback(button_pause_response)
+bot.add_component_callback(button_resume_response)
+bot.add_component_callback(button_stop_response)
 
 
 def main():

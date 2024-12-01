@@ -4,8 +4,7 @@ Changelog
 1.8 (unreleased)
 ----------------
 
-- Nothing changed yet.
-
+- Upgrade to discord-py-interactions 5.11
 
 1.7 (2024-02-06)
 ----------------
