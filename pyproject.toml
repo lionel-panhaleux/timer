@@ -22,7 +22,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Environment :: Web Environment",
 ]
-dependencies = ["discord-py-interactions", "uvloop"]
+dependencies = ["discord-py-interactions>5.13", "uvloop>0.21"]
 
 [project.optional-dependencies]
 dev = ["black", "ruff", "zest.releaser[recommended]"]
