@@ -4,7 +4,7 @@ Changelog
 1.10 (unreleased)
 -----------------
 
-- Nothing changed yet.
+- Bump discord-py-interactions
 
 
 1.9 (2024-12-01)

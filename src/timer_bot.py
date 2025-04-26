@@ -28,7 +28,7 @@ async def on_ready():
 @interactions.listen()
 async def on_startup():
     """Startup success"""
-    logger.info(f"Started")
+    logger.info("Started")
 
 
 @interactions.listen()
@@ -495,7 +495,7 @@ async def button_stop_response(ctx: interactions.ComponentContext):
 
 
 async def _pause_timer(
-    ctx: Union[interactions.SlashContext, interactions.ComponentContext]
+    ctx: Union[interactions.SlashContext, interactions.ComponentContext],
 ):
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
@@ -517,12 +517,12 @@ async def _pause_timer(
         message = f"{timer.author.mention} timer paused by {ctx.author.mention}"
     else:
         ephemeral = True
-        message = f"Timer paused"
+        message = "Timer paused"
     await ctx.send(message, ephemeral=ephemeral)
 
 
 async def _resume_timer(
-    ctx: Union[interactions.SlashContext, interactions.ComponentContext]
+    ctx: Union[interactions.SlashContext, interactions.ComponentContext],
 ):
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
@@ -543,7 +543,7 @@ async def _resume_timer(
 
 
 async def _stop_timer(
-    ctx: Union[interactions.SlashContext, interactions.ComponentContext]
+    ctx: Union[interactions.SlashContext, interactions.ComponentContext],
 ):
     timer = TIMERS.get(ctx.channel, None)
     if not timer:
