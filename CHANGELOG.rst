@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.10 (unreleased)
+1.10 (2025-04-26)
 -----------------
 
 - Bump discord-py-interactions
