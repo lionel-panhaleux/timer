@@ -203,28 +203,20 @@ class Timer:
         elif self.resume_future:
             title = "Timer paused: " + self.time_str()
             components = [button_resume, button_stop]
-            description = (
-                "Use the buttons or the `/timer` commands to manipulate the timer."
-            )
+            description = "Use the buttons or the `/timer` commands to manipulate the timer."
         else:
             title = self.time_str()
             components = [button_pause, button_stop]
-            description = (
-                "Use the buttons or the `/timer` commands to manipulate the timer."
-            )
+            description = "Use the buttons or the `/timer` commands to manipulate the timer."
         embeds = [interactions.Embed(title=title, description=description)]
         if self.message:
             try:
-                self.message = await self.message.edit(
-                    embeds=embeds, components=components
-                )
+                self.message = await self.message.edit(embeds=embeds, components=components)
             # messages older than 1h cannot be edited too much, at some point it fails
             except interactions.errors.LibraryException as e:
                 logger.info("Failed to edit message: %s", e)
                 old_message = self.message
-                self.message = await self.channel.send(
-                    embeds=embeds, components=components
-                )
+                self.message = await self.channel.send(embeds=embeds, components=components)
                 if old_message:
                     try:
                         await old_message.delete()
@@ -323,9 +315,7 @@ async def timer_start(
     if ctx.channel_id in TIMERS:
         await ctx.send(
             embeds=[
-                interactions.Embed(
-                    title="Timer already running", description=RUNNING_TIMER_HELP
-                )
+                interactions.Embed(title="Timer already running", description=RUNNING_TIMER_HELP)
             ],
             ephemeral=True,
         )
@@ -339,9 +329,7 @@ async def timer_start(
         try:
             await timer.run()
         except interactions.client.errors.LibraryException:
-            await ctx.edit(
-                "**Failed to start**\nTimer bot requires permission to send messages"
-            )
+            await ctx.edit("**Failed to start**\nTimer bot requires permission to send messages")
         logger.info(f"[{prefix}] Timer finished")
     else:
         await ctx.send(
@@ -396,9 +384,7 @@ async def timer_add(ctx: interactions.SlashContext, minutes: int):
         return
     prefix = _get_prefix(ctx)
     if timer.secured and ctx.author.id != timer.author.id:
-        await ctx.send(
-            "This is a secured timer, only the owner can modify it.", ephemeral=True
-        )
+        await ctx.send("This is a secured timer, only the owner can modify it.", ephemeral=True)
         return
     timer.adjust_time(minutes * 60)
     await timer.refresh(resume=False)
@@ -429,9 +415,7 @@ async def timer_sub(ctx: interactions.SlashContext, minutes: int):
         return
     prefix = _get_prefix(ctx)
     if timer.secured and ctx.author.id != timer.author.id:
-        await ctx.send(
-            "This is a secured timer, only the owner can modify it.", ephemeral=True
-        )
+        await ctx.send("This is a secured timer, only the owner can modify it.", ephemeral=True)
         return
     timer.adjust_time(-minutes * 60)
     await timer.refresh(resume=False)
@@ -439,9 +423,7 @@ async def timer_sub(ctx: interactions.SlashContext, minutes: int):
     await ctx.send(f"Time substracted ({minutes}min)")
 
 
-@timer_base.subcommand(
-    sub_cmd_name="display", sub_cmd_description="Display the timer anew"
-)
+@timer_base.subcommand(sub_cmd_name="display", sub_cmd_description="Display the timer anew")
 async def timer_display(ctx: interactions.SlashContext):
     """Discplay the timer anew"""
     timer = TIMERS.get(ctx.channel, None)
@@ -506,9 +488,7 @@ async def _pause_timer(
         return
     prefix = _get_prefix(ctx)
     if timer.secured and ctx.author.id != timer.author.id:
-        await ctx.send(
-            "This is a secured timer, only the owner can pause it.", ephemeral=True
-        )
+        await ctx.send("This is a secured timer, only the owner can pause it.", ephemeral=True)
         return
     await timer.pause()
     logger.info(f"[{prefix}] Paused")
@@ -533,9 +513,7 @@ async def _resume_timer(
         return
     prefix = _get_prefix(ctx)
     if timer.secured and ctx.author.id != timer.author.id:
-        await ctx.send(
-            "This is a secured timer, only the owner can resume it.", ephemeral=True
-        )
+        await ctx.send("This is a secured timer, only the owner can resume it.", ephemeral=True)
         return
     await timer.refresh()
     await ctx.send("Timer resumed", ephemeral=True)
@@ -553,9 +531,7 @@ async def _stop_timer(
         )
         return
     if timer.secured and ctx.author.id != timer.author.id:
-        await ctx.send(
-            "This is a secured timer, only the owner can stop it.", ephemeral=True
-        )
+        await ctx.send("This is a secured timer, only the owner can stop it.", ephemeral=True)
         return
     await timer.stop()
     await ctx.send("Timer stopped", ephemeral=True)
