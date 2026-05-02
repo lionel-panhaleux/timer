@@ -1,21 +1,22 @@
 [build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
+requires = ["uv_build>=0.7.19,<0.8"]
+build-backend = "uv_build"
 
 [project]
 name = "timer-bot"
-version = "1.11.dev0"
+version = "1.10"
 authors = [
     { name = "Lionel Panhaleux", email = "lionel.panhaleux+timer@gmail.com" },
 ]
 description = "Discord Timer Bot"
 keywords = ["Discord", "timer"]
 readme = "README.md"
-requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.13",
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Other Audience",
     "Natural Language :: English",
@@ -24,17 +25,15 @@ classifiers = [
 ]
 dependencies = ["discord-py-interactions>=5.14", "uvloop>=0.21"]
 
-[project.optional-dependencies]
-dev = ["black", "ruff", "zest.releaser[recommended]"]
-
 [project.scripts]
-timer-bot = "src.timer_bot:main"
+timer-bot = "timer_bot:main"
 
 [project.urls]
 Repository = "https://github.com/lionel-panhaleux/timer-bot"
 
-[tool.setuptools.packages.find]
-include = ["src*"]
+[dependency-groups]
+dev = ["pytest", "ruff"]
 
-[tool.zest-releaser]
-create-wheel = true
+[tool.ruff]
+line-length = 100
+target-version = "py313"

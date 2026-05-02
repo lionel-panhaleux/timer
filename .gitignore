@@ -8,8 +8,11 @@ dist/
 
 # Environments
 .env
-.venv
+.venv/
 venv/
 
 # IDEs
 .vscode/
+
+# Ruff cache
+.ruff_cache/
