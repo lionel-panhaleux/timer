@@ -92,12 +92,3 @@ Adding a recipient: decrypt, append the public key, then
 `age -R ansible/secrets/age-recipients.txt -o ansible/secrets/vault-pass.age < ansible/.vault_pass`.
 Removing one only stops future decrypts; revoking for cause means a new vault password and
 re-encrypting `vault.yml` with it.
-
-### Until the cutover
-
-The host still runs 1.10 from the **legacy `myserver` repo**'s `timer-bot.yml` (`python-worker`
-role): venv `/home/lpanhaleux/projects/timer-bot/venv` on the host's 3.11, `User=lpanhaleux`, the
-token an inline `Environment=` line in the unit, logs under `SYSLOG_IDENTIFIER=bash`. pip skips a
-`>=3.13` release there and reports success, so nothing after 1.10 can ship through it. Both deploys
-write the same unit name: systemd stops the old process before starting the new one, never two
-gateways on one token.

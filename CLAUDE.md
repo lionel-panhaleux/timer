@@ -53,5 +53,5 @@ above the trailers only for a real GitHub issue. Push, release and deploy are th
 
 ## Right now
 
-PyPI **1.10** runs on gravelines, deployed from legacy `myserver`. [`wiki/product.md`](wiki/product.md)
-holds the state.
+PyPI **1.11** runs on gravelines, deployed by this repo's `ansible/` (`just deploy`).
+[`wiki/product.md`](wiki/product.md) holds the state.

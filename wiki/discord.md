@@ -32,6 +32,10 @@ sources in `/upkeep`, not code.
 - **Slash commands live on Discord, not on the host.** Stopping the process does not remove them;
   only deleting the application or clearing its global commands does.
   [server-setup `OPERATIONS.md`, "Retiring a service"]
+- **A changed command definition is refused by stale clients**: after the overwrite, a Discord
+  client still holding the old one answers "This command is outdated, please try again in a few
+  minutes" and never sends the interaction. Reloading the client fixes it; users catch up on their
+  own. Seen when 1.11 replaced 1.10's interactions.py command (2026-09-13). [observed]
 
 ## Rate limits and errors
 

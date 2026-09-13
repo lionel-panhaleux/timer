@@ -73,14 +73,8 @@ buttons on an embed posted before a restart or a deploy still answer.
 
 ## Status (2026-09-13)
 
-**PyPI 1.10**, deployed on gravelines from `myserver` ([operations.md](operations.md)).
+**PyPI 1.11** — the hikari port — deployed on gravelines by this repo's `ansible/`
+([operations.md](operations.md#deploy)). Not yet true of the running bot:
 
-This repo's `ansible/` deploy is written but has never converged: no vault is bootstrapped yet, and
-a release cannot install on the host before it does ([operations.md](operations.md#until-the-cutover)).
-`master` is ported to hikari and unreleased. Not yet true of the running bot:
-
-- The one-timer-per-channel refusal never fires in 1.10: a second start runs a second timer. Fixed
-  on `master`.
-- Commands in a thread missing from the library's cache crash in 1.10. Fixed on `master`.
 - **A restart drops every running timer** — timers live in process memory only. Surviving a restart
   is wanted.
