@@ -33,7 +33,7 @@ if hits and ".claude" not in path.parts:
 if "tests" in path.parts or path.name.startswith("test_") or path.name == "conftest.py":
     context = (
         f"Test file touched: {path}. Be able to name the wiki claim it traces to. Weakening or "
-        "removing an assertion is a blocking egress finding unless a wiki-declared behaviour "
+        "removing an assertion is an egress finding unless a wiki-declared behaviour "
         "changed in the same diff."
     )
     print(

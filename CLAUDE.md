@@ -36,9 +36,9 @@ Context lives in the wiki, asks live on the board. Never the other way round.
 - **`/upkeep`** — maintenance, every 20 shipped lines or monthly: wiki lint, board eviction, harness
   ratchet.
 
-Egress review is by a fresh-context agent that has not seen the implementation conversation. Its
-findings are **blocking** or **advisory**; after two rejection rounds, escalate to the human rather
-than a third.
+Egress review is by a fresh-context agent that has not seen the implementation conversation. It is
+not adversarial — **"Looks good" is a fine verdict** — and everything it finds is fixed in the same
+task; after two rounds that still raise findings, escalate to the human rather than a third.
 
 ## Commands
 

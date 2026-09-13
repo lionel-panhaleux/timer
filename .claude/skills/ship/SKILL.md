@@ -34,7 +34,9 @@ Pushing, `just release` and any deploy are outward-facing: stop and ask before e
 
 One unit of work is **one landing**, all three parts together:
 
-1. **Code** changed and green — `just lint`, `just typecheck` and `just test`.
+1. **Code** changed and green — `just lint`, `just typecheck` and `just test`. Every `product.md`
+   claim the work touched has a test, and every test added or changed traces to a claim; a
+   behaviour the wiki leaves ambiguous gets pinned in both.
 2. **Wiki** — every page named in the line's doc-impact updated, or the absence justified in a
    sentence. A pivot is an edit: the wiki never keeps a deprecated fact, git keeps the history. If
    the work changed a standing decision, the decision line changes here, with one line of rationale
@@ -52,18 +54,18 @@ Spawn the `egress-reviewer` subagent. It has not seen this conversation, and mus
 commit range or diff, the board line text you just deleted, and nothing else — it reads `wiki/` and
 the code itself.
 
-- **Blocking** findings: fix them in this task and re-run the reviewer. Expect first-round scope
-  growth — the reviewer may require the refactoring or deletion *now* rather than as a follow-up
-  line, and that is its job.
-- **Advisory** findings: record them in your report to the human. `/upkeep` mines them; three
-  occurrences of the same class is a harness problem, not a code problem.
-- After **two** rejection rounds, stop and escalate the disagreement to the human, compressed to its
-  inflexion point. Do not go to three.
-
-"Looks good" is a valid and common verdict.
+- **Every finding is fixed in this task** — scope grows to take it — then re-run the reviewer on the
+  whole range. Expect first-round scope growth: the reviewer may require the refactoring or deletion
+  *now* rather than as a follow-up line, and that is its job. A finding you judge wrong is not
+  skipped silently: say why in the report. Only a genuinely separable one goes through `/intake`.
+- The cycle closes on **"Looks good."** — a valid and common verdict. After **two** rounds that still
+  raise findings, stop and escalate to the human, compressed to its inflexion point. Do not go to
+  three.
 
 ## 5. Report
 
-Tell the human: the line, what landed, which wiki pages moved, the commit, and any advisory findings.
+Tell the human: the line, what landed, which wiki pages moved, the commits, and each review finding
+with what was done about it. `/upkeep` mines them; three of the same class is a harness problem, not
+a code problem.
 Then bump the counter in `BOARD.md` — `<!-- cycles-since-upkeep: N -->` — by one. At 20, or a month
 after the last `/upkeep`, run `/upkeep`.

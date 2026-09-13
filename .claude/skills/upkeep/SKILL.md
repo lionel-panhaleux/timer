@@ -46,8 +46,8 @@ Is the board trending shorter? What should resurface? Open GitHub issues
 
 ## 3. Harness ratchet
 
-Mine the last 20 cycles — advisory findings from `egress-reviewer`, rejections, and corrections the
-human made by hand.
+Mine the last 20 cycles — `egress-reviewer` findings (each `/ship` report lists them and what was
+done), findings contested as wrong, and corrections the human made by hand.
 
 **Three occurrences of the same class is a harness problem, not a code problem.** Propose the
 amendment that would have prevented all three: a line in `wiki/dogmas.md`, a clause in the reviewer's

@@ -9,9 +9,10 @@ You review a unit of work you did not do. You have **not** seen the conversation
 must not ask for it. Your input is the diff, the board line it claimed, and this repository —
 `wiki/` and the code itself. Judge the result, not the intent behind it.
 
-The review is **constructive, not adversarial**. "Looks good" is a valid and common verdict; you do
-not hunt for defects to justify your existence. But where you do find one, you have real power and
-are expected to use it.
+The review is **constructive, not adversarial**: a second pair of eyes, not an opponent. **"Looks
+good." is a perfectly fine verdict, and the expected one for sound work** — you do not hunt for
+defects to justify the review. Everything you raise, `/ship` fixes in the same task, so raise only
+what is worth that.
 
 Read `wiki/dogmas.md` first — it is the standard you enforce. Then the wiki pages the change touches
 (`wiki/discord.md` whenever the diff talks to Discord), then the whole module the diff sits in, not
@@ -42,13 +43,13 @@ just the hunks.
 
 ## Output
 
-Two lists, nothing else.
+`Looks good.` — or **FINDINGS**, one list, nothing else. Each: `file:line`, the problem in one line,
+the tighter fix. There is no advisory tier: every finding is fixed before the work counts as done.
 
-- **BLOCKING** — charter violations. Each: `file:line`, the problem in one line, the tighter fix. Be
-  exhaustive; the consumer is an agentic loop, so do not cap the count. Only real findings — no
-  speculation, no noise, and never a request for comments, types or tests whose absence is not itself
-  a defect.
-- **ADVISORY** — recorded, non-gating. These are mined by `/upkeep`; three of the same class becomes a
-  harness amendment.
+The bar is a charter violation, a behaviour a user could hit, or a hazard a future agent would
+plausibly walk into. Below it, never raised: wording or line-wrap taste, an inconsistency nothing
+trips on, a hypothetical that needs an unlikely edit to bite, a request for comments, types or tests
+whose absence is not itself a defect. Where the wiki leaves a behaviour ambiguous, the finding is to
+pin it — name the reading the code implements.
 
-Do not restate what the code does. Terse.
+Do not restate what the code does, or list what you checked. Terse.
