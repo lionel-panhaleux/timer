@@ -93,7 +93,10 @@ Describe the change itself in the message. When a commit fixes a GitHub issue, c
 publishes to PyPI and deploying restarts the public bot: both are the human's call.
 
 **Deploys live in this repo**, a per-app `ansible/` directory as krcg-bot's — never a shared deploy
-repo. *(Interview, 2026-09-13.)*
+repo. Apps share only the foundation from `server-setup`: the box itself, postgres and its restic
+backups, Grafana supervision and log collection. An app without a database needs no dependency on
+the collection, as long as its logs are collected. **No CI deploy**: a deploy is run from the
+laptop. *(Interview, 2026-09-13.)*
 
 ## Human inflexion points
 

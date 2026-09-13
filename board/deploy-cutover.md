@@ -38,8 +38,9 @@ All from the repo root. Nothing here should put the token in a terminal log you 
   the `/home/lpanhaleux/projects/` paragraph (last `python-worker` gone); `krcg_gra` then has no
   playbook either. Its per-app line says the `ansible/` directories "consume the collection": bots
   don't.
-- `server-setup/deploy-targets.yml` provisions `DEPLOY_SSH_KEY` into this public repo's `production`
-  environment, and no workflow reads it: ask the human whether CI deploy is wanted, else drop the line.
+- No CI deploy, ever (human, 2026-09-13): `lionel-panhaleux/timer` is out of
+  `server-setup/deploy-targets.yml`. This repo's `production` GitHub environment still holds the
+  `DEPLOY_*` values; deleting it is outward-facing — ask.
 - Host: remove `/home/lpanhaleux/projects/timer-bot` (human, or with leave).
 - `wiki/operations.md`: delete "Until the cutover". `product.md` Status and `CLAUDE.md` "Right now":
   deployed from this repo.

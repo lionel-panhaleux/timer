@@ -47,9 +47,8 @@ just deploy 1.10   # any major.minor on PyPI: a rollback
 ```
 
 It installs `timer-bot==<version>` **from PyPI**: what runs answers to a release, and no path ships
-the working tree. There is no CI deploy, although `server-setup` already provisions this repo's
-`production` environment (`DEPLOY_HOST`, `DEPLOY_HOST_KEY`, `DEPLOY_SSH_KEY`): `just release` pushes
-the tag before `uv publish`, so a tag-triggered deploy races PyPI.
+the working tree. There is no CI deploy ([dogmas.md](dogmas.md#commits-releases-deploys)), so this
+repo is not in `server-setup/deploy-targets.yml`.
 
 `ansible-core` is the `deploy` dependency group (`uv run --group deploy`), out of `dev` so CI never
 installs it. The play uses only `ansible.builtin` — the `server_setup` collection's roles are `nginx_site` and
@@ -65,7 +64,9 @@ What a converge leaves on the host:
   itself carries only `PYTHONOPTIMIZE=1`. Neither file is written with a backup, so a rotation leaves
   no old token behind.
 - unit `/etc/systemd/system/timer-bot.service`, `Restart=always`, `ExecStart` the venv's `timer-bot`:
-  `journalctl -u timer-bot.service`.
+  `journalctl -u timer-bot.service` or `-t timer-bot`. `server-setup`'s Alloy ships the whole journal
+  to Grafana Cloud Loki, labelled `unit="timer-bot.service"` and `tag="timer-bot"`: nothing here
+  configures log collection.
 
 **A restart drops every running timer** ([product.md](product.md#status-2026-09-13)). A converge
 restarts only when the installed version, the token or the unit changes, then checks 20 seconds later
