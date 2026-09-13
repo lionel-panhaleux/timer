@@ -9,7 +9,8 @@ Tooling is `just` + `uv`. `just` with no recipe lists them.
 | `just typecheck` | `ty check --error-on-warning` |
 | `just test` | `uv run pytest` |
 | `just serve` | runs the bot locally, sourcing `.env` |
-| `just release [minor\|major]` | clean tree required; bump, commit `release: vX.Y`, tag, build, push, `uv publish` to PyPI |
+| `just release [minor\|major]` | clean tree required; bump, commit `release: vX.Y`, tag, build, push, then `just publish` |
+| `just publish` | upload `dist/` to PyPI with the token in `~/.pypi_token` — `uv publish` never reads `~/.pypirc`. Re-run it alone when a release fails after the push |
 | `just deploy [version]` | converge a PyPI release onto gravelines — [Deploy](#deploy) |
 | `just clean` | drop build artifacts |
 

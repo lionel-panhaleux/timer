@@ -55,4 +55,8 @@ release bump="minor":
     uv build
     git push origin HEAD
     git push origin "v$new"
-    uv publish
+    just publish
+
+# Upload dist/ to PyPI. uv never reads ~/.pypirc: the token comes from ~/.pypi_token.
+publish:
+    UV_PUBLISH_TOKEN="$(tr -d '\n' < ~/.pypi_token)" uv publish
