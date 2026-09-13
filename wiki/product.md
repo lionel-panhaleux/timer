@@ -14,7 +14,7 @@ unless stated.
 default false. Zero total time is refused ("No time"). The bot posts the timer embed in the channel
 and runs it. Works in text channels, threads and voice-channel chats. If the bot cannot send
 messages there, the start acknowledgement becomes "Failed to start — requires permission to send
-messages".
+messages", and nothing is left in the channel.
 
 **One timer per channel.** A start in a channel that already runs one is refused with the list of
 commands for the running timer.
@@ -34,12 +34,13 @@ It updates every 30 seconds, and about once a second in the last five and a half
 seconds skip, the count itself stays exact (see [discord.md](discord.md)). Running, it carries
 **Pause** and **Stop** buttons; paused, **Resume** and **Stop**; finished, none. When Discord refuses
 to edit an old embed, the bot posts a fresh one and deletes the old. When it refuses a new message —
-permission revoked, channel gone — the timer ends silently.
+permission revoked, channel gone — the timer ends silently, deleting its embed where Discord still
+lets it.
 
 **Pings.** The author is mentioned in the channel at every whole hour left, then at 30, 15, 5 and
-1 minute left, and at zero ("time!"). The marks are recomputed from the time left whenever the timer
-starts or is adjusted: marks above it are skipped, and a whole-hour mark equal to it — a timer started
-at exactly 2 hours — pings at once.
+1 minute left, and at zero ("time!") — however it gets there, `/timer sub` included. The marks are
+recomputed from the time left whenever the timer starts or is adjusted: marks above it are skipped,
+and a whole-hour mark equal to it — a timer started at exactly 2 hours — pings at once.
 
 **Pause / resume.** `/timer pause` or the button freezes the count. A pause **auto-resumes after
 30 minutes**. Pausing someone else's timer is announced publicly, mentioning its author. `/timer

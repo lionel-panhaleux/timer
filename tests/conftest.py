@@ -120,8 +120,8 @@ class Discord:
     def __init__(self) -> None:
         self.messages: list[Message] = []
         self.responses: list[Response] = []
-        #: method name -> how many next calls are refused with a 403
-        self.refuse: dict[str, int] = {}
+        #: method name -> for each of its next calls, whether it is refused with a 403
+        self.refuse: dict[str, list[bool]] = {}
         #: seconds every call takes to come back, during which the bot's other tasks run
         self.latency = 0.0
         self.commands: typing.Any = None
@@ -131,8 +131,7 @@ class Discord:
     async def _call(self, method: str) -> None:
         if self.latency:
             await asyncio.sleep(self.latency)
-        if self.refuse.get(method):
-            self.refuse[method] -= 1
+        if self.refuse.get(method) and self.refuse[method].pop(0):
             raise hikari.ForbiddenError(url=method, headers={}, raw_body="", code=50013)
 
     def _message(self, message: typing.Any) -> Message:

@@ -98,7 +98,7 @@ class Timer:
 
     def _set_thresholds(self) -> None:
         left = self.left()
-        self.thresholds = [limit for limit in THRESHOLDS if left > limit]
+        self.thresholds = [limit for limit in THRESHOLDS if left > limit or limit == 0]
         self.thresholds += [hour * 3600 for hour in range(1, int(left // 3600) + 1)]
 
     def adjust(self, time: int) -> None:
@@ -161,6 +161,8 @@ class Timer:
                     return
         except hikari.ClientHTTPResponseError as e:
             logger.info("[%s] Timer dropped, Discord refused: %s", self.channel_id, e)
+            if self.message_id:
+                await self._delete(self.message_id)
         except Exception:
             logger.exception("[%s] Timer crashed", self.channel_id)
         finally:
@@ -268,6 +270,8 @@ async def timer_start(
             await timer.render()
         except hikari.ClientHTTPResponseError as e:
             logger.info("[%s] Failed to start: %s", channel_id, e)
+            if timer.message_id:
+                await timer._delete(timer.message_id)
             await interaction.edit_initial_response(
                 "**Failed to start**\nTimer bot requires permission to send messages"
             )

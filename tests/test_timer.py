@@ -94,9 +94,11 @@ async def test_start_in_a_thread_or_a_voice_channel_chat(discord, channel_type):
     assert discord.embed(channel).title == "Timer paused: 10 minutes remaining"
 
 
-async def test_start_without_permission_to_send(discord):
-    discord.refuse["create_message"] = 1
-    await discord.command("start", hours=1)
+@pytest.mark.parametrize("refused", [[True], [False, True]], ids=["the embed", "its first ping"])
+async def test_start_without_permission_to_send(discord, refused):
+    """Started at a whole hour, the start pings at once: refused either way, nothing is left."""
+    discord.refuse["create_message"] = refused
+    await discord.command("start", hours=2)
     assert discord.response().content == (
         "**Failed to start**\nTimer bot requires permission to send messages"
     )
@@ -171,7 +173,7 @@ async def test_refused_edit_posts_a_fresh_embed(discord):
     """Discord refuses the edit, as it does past an old message's edit budget (30046)."""
     await discord.command("start", hours=2)
     old = discord.embed()
-    discord.refuse["edit_message"] = 1
+    discord.refuse["edit_message"] = [True]
     await asyncio.sleep(31)
     assert old.deleted
     assert discord.embed() is not old
@@ -181,14 +183,18 @@ async def test_refused_edit_posts_a_fresh_embed(discord):
     assert len(discord.embed().updates) == 2
 
 
-async def test_a_refused_message_ends_the_timer_silently(discord):
-    """Permission revoked mid-run: the timer goes, and the channel is free again."""
-    await discord.command("start", hours=1)
-    discord.refuse["create_message"] = 1
-    await discord.command("display")
-    assert not discord.embeds()
+@pytest.mark.parametrize("refused", ["a repost", "a ping"])
+async def test_a_refused_message_ends_the_timer_silently(discord, refused):
+    """Permission revoked mid-run: the timer goes with its embed, and the channel is free again."""
+    await discord.command("start", hours=0, minutes=31)
+    discord.refuse["create_message"] = [True]
+    if refused == "a repost":
+        await discord.command("display")
+    else:
+        await asyncio.sleep(61)
+    assert not discord.channel()
     await asyncio.sleep(3600)
-    assert not discord.embeds()
+    assert not discord.channel()
     await discord.command("start", hours=0, minutes=20)
     assert discord.embed().title == "20 minutes remaining"
 
@@ -333,9 +339,11 @@ async def test_adjusting_a_paused_timer_keeps_it_paused(discord):
 
 
 async def test_subtracting_past_zero_finishes(discord):
+    """Finished by `sub`, the timer pings as it would finishing on time."""
     await discord.command("start", hours=0, minutes=10)
     await discord.command("sub", minutes=30)
     assert discord.embed().title == "Timer finished"
+    assert [content for _, content in pings(discord)] == [f"{PING} time!"]
     await discord.command("start", hours=0, minutes=20)
     assert discord.embeds()[-1].title == "20 minutes remaining"
 
