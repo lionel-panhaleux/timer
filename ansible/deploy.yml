@@ -1,16 +1,17 @@
 ---
 # Install a PyPI release of timer-bot onto the bot host and restart the unit.
 #
-#   DEPLOY_HOST=<host> ansible-playbook deploy.yml -e version=X.Y
+#   ansible-playbook deploy.yml -e version=X.Y
 #
 # `just deploy` runs it. The token comes from vault.yml; -e discord_token=...
 # overrides it, since extra-vars outrank vars_files.
 - name: Deploy timer-bot
   hosts: bot
   become: true
-  # nothing here reads a fact, and gathering them would beat the input check to
-  # the connection — an empty DEPLOY_HOST should fail with a sentence
   gather_facts: false
+  # a run failing between the unit write and the restart would otherwise leave
+  # the old process under the new unit, and the re-run sees nothing to change
+  force_handlers: true
 
   vars:
     app_dir: /opt/timer-bot
@@ -32,13 +33,14 @@
   pre_tasks:
     - name: Check the deploy inputs
       ansible.builtin.assert:
+        # major.minor exactly: the install is skipped on a string match with the
+        # installed version, and 1.10.0 would reinstall and restart every time
         that:
-          - version | length > 0
-          - ansible_host | length > 0
+          - version is match('^\d+\.\d+$')
           - discord_token | default('') | length > 0
         fail_msg: >-
-          needs a version (-e version=X.Y, published on PyPI), DEPLOY_HOST in the
-          environment, and discord_token from vault.yml
+          needs a version (-e version=X.Y, published on PyPI) and discord_token
+          from vault.yml
       delegate_to: localhost
       become: false
 

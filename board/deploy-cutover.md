@@ -12,19 +12,20 @@ never converged.
 All from the repo root. Nothing here should put the token in a terminal log you keep.
 
 1. **Bootstrap the vault.** The token is the one the bot runs on today, in `myserver/timer-bot.yml`'s
-   vault — not `systemctl cat` on the host, which prints it. Untested (Ansible will not run in the
-   agent's shell): from `myserver`,
-   `yq '.[0].roles[0].pw_env.DISCORD_TOKEN' timer-bot.yml | ansible-vault decrypt --output -`.
+   vault — not `systemctl cat` on the host, which prints it. Piped straight in, never shown; untested
+   (Ansible will not run in the agent's shell):
    ```shell
    cd ansible
    head -c 32 /dev/urandom | base64 > .vault_pass
    age -R secrets/age-recipients.txt -o secrets/vault-pass.age < .vault_pass
-   uv run --group deploy ansible-vault create vault.yml    # discord_token: <token>
+   (cd ../../myserver && yq '.[0].roles[0].pw_env.DISCORD_TOKEN' timer-bot.yml | ansible-vault decrypt --output -) \
+     | { read -r t; printf 'discord_token: %s\n' "$t"; } \
+     | uv run --group deploy ansible-vault encrypt --output vault.yml -
    ```
    Commit `ansible/vault.yml` and `ansible/secrets/vault-pass.age`.
-2. **Reach the host**: `cd ansible && DEPLOY_HOST=152.228.170.51 uv run --group deploy ansible bot -m ping -b`.
+2. **Reach the host**: `cd ansible && uv run --group deploy ansible bot -m ping -b`.
 3. **Converge 1.10 first** — today's code, under 3.13 through the new unit, so the mechanism is
-   proven without also shipping the hikari port: `DEPLOY_HOST=152.228.170.51 just deploy 1.10`.
+   proven without also shipping the hikari port: `just deploy 1.10`.
    Drops running timers. If the settle check fails, `ansible-playbook timer-bot.yml` from `myserver`
    puts the old unit back.
 4. **Verify**: `systemctl status timer-bot` runs `/opt/timer-bot/venv/bin/timer-bot` as `timer-bot`;

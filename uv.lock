@@ -105,18 +105,6 @@ wheels = [
 ]
 
 [[package]]
-name = "ansible"
-version = "14.4.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "ansible-core" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/58/81/587e26b381e599195f1076d1c987312cd03e5ee14d9a23411ea01ef6e319/ansible-14.4.0.tar.gz", hash = "sha256:f0b3b8871d6f4e4edd7e47763b18144a32c215f735569be44c49a70e04893519", size = 50925367, upload-time = "2026-09-08T19:04:18.135Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/01/c7/f1037ff1dc73d00c6d073732d3d523037f20fb784368374e04e2f229f456/ansible-14.4.0-py3-none-any.whl", hash = "sha256:7aedc85a55a9d14933c155101d6ae2d8358e40142b0dba7eb42125a49222b0f4", size = 51039461, upload-time = "2026-09-08T19:04:12.776Z" },
-]
-
-[[package]]
 name = "ansible-core"
 version = "2.21.4"
 source = { registry = "https://pypi.org/simple" }
@@ -782,7 +770,7 @@ dependencies = [
 
 [package.dev-dependencies]
 deploy = [
-    { name = "ansible" },
+    { name = "ansible-core" },
 ]
 dev = [
     { name = "pytest" },
@@ -794,7 +782,7 @@ dev = [
 requires-dist = [{ name = "hikari", specifier = ">=2.6,<3" }]
 
 [package.metadata.requires-dev]
-deploy = [{ name = "ansible" }]
+deploy = [{ name = "ansible-core" }]
 dev = [
     { name = "pytest" },
     { name = "ruff" },

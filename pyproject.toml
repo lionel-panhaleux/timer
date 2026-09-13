@@ -34,8 +34,7 @@ timer-bot = "timer_bot:main"
 Repository = "https://github.com/lionel-panhaleux/timer-bot"
 
 [dependency-groups]
-# deploy only: kept out of dev so CI never installs Ansible
-deploy = ["ansible"]
+deploy = ["ansible-core"]
 dev = ["pytest", "ruff", "ty"]
 
 [tool.ruff]

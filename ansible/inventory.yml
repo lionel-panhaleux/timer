@@ -1,5 +1,5 @@
 bot:
   hosts:
     gravelines:
-      ansible_host: "{{ lookup('env', 'DEPLOY_HOST') }}"
+      ansible_host: 152.228.170.51
       ansible_user: "{{ lookup('env', 'DEPLOY_USER') | default('deploy', true) }}"

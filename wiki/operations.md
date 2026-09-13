@@ -42,8 +42,8 @@ is `server-setup`'s. The deploy is `ansible/deploy.yml`, shaped like krcg-bot's 
 from the laptop:
 
 ```shell
-DEPLOY_HOST=152.228.170.51 just deploy        # the version in pyproject.toml
-DEPLOY_HOST=152.228.170.51 just deploy 1.10   # any version on PyPI: a rollback
+just deploy        # the version in pyproject.toml
+just deploy 1.10   # any major.minor on PyPI: a rollback
 ```
 
 It installs `timer-bot==<version>` **from PyPI**: what runs answers to a release, and no path ships
@@ -51,8 +51,8 @@ the working tree. There is no CI deploy, although `server-setup` already provisi
 `production` environment (`DEPLOY_HOST`, `DEPLOY_HOST_KEY`, `DEPLOY_SSH_KEY`): `just release` pushes
 the tag before `uv publish`, so a tag-triggered deploy races PyPI.
 
-Ansible is the `deploy` dependency group (`uv run --group deploy`), out of `dev` so CI never installs
-it. The play uses only `ansible.builtin` — the `server_setup` collection's roles are `nginx_site` and
+`ansible-core` is the `deploy` dependency group (`uv run --group deploy`), out of `dev` so CI never
+installs it. The play uses only `ansible.builtin` — the `server_setup` collection's roles are `nginx_site` and
 `postgres_db`, neither of which a bot needs. It connects as `deploy` (`DEPLOY_USER` overrides), which
 needs passwordless sudo.
 
