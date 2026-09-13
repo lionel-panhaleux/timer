@@ -14,6 +14,10 @@ venv/
 # Deploy — the decrypted vault password
 ansible/.vault_pass
 
+# Running timers of a local `just serve`
+timers.json
+timers.json.tmp
+
 # IDEs
 .vscode/
 

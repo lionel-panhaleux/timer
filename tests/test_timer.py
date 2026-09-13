@@ -370,6 +370,76 @@ async def test_display_reposts_at_the_bottom(discord):
     assert discord.channel()[-1].title == "1:00 remaining"
 
 
+# ############################################################################### restart
+async def restart(downtime: float) -> None:
+    """Stop the bot as a SIGTERM does, then start a fresh process on the same state file."""
+    await timer_bot.bot.dispatch(hikari.StoppingEvent(app=timer_bot.bot), return_tasks=True)
+    await asyncio.sleep(downtime)
+    timer_bot.TIMERS.clear()
+    await timer_bot.bot.dispatch(hikari.StartingEvent(app=timer_bot.bot), return_tasks=True)
+    await asyncio.sleep(0.01)
+
+
+async def test_a_restart_keeps_the_timer_on_time(discord):
+    """Down for 20 seconds: the same embed, still secured, pinging on the original schedule."""
+    await discord.command("start", hours=2, secured=True)
+    start = now()
+    embed = discord.embed()
+    await asyncio.sleep(40 * 60)
+    await restart(downtime=20)
+    assert discord.embed() is embed
+    assert embed.title == "1:20 remaining"
+    await discord.click("pause", user=OTHER)
+    assert discord.response().content == "This is a secured timer, only the owner can pause it."
+    await asyncio.sleep(start + 2 * 3600 + 5 - now())
+    expected = [
+        (0, "2:00 remaining"),
+        (3600, "1:00 remaining"),
+        (5400, "30 minutes remaining"),
+        (6300, "15 minutes remaining"),
+        (6900, "5′ 00″ remaining"),
+        (7140, "1′ 00″ remaining"),
+        (7200, "time!"),
+    ]
+    got = [(t - start, content) for t, content in pings(discord)]
+    assert [content for _, content in got] == [f"{PING} {text}" for _, text in expected]
+    for (at, _), (expected_at, _) in zip(got, expected):
+        assert at == pytest.approx(expected_at, abs=0.1)
+    assert discord.embed() is embed
+    assert embed.title == "Timer finished"
+
+
+async def test_a_restart_skips_the_marks_it_missed(discord):
+    await discord.command("start", hours=0, minutes=20)
+    start = now()
+    await asyncio.sleep(4 * 60)
+    await restart(downtime=2 * 60)
+    assert discord.embed().title == "14 minutes remaining"
+    await asyncio.sleep(start + 20 * 60 + 5 - now())
+    got = [(t - start, content) for t, content in pings(discord)]
+    assert [content for _, content in got] == [
+        f"{PING} 5′ 00″ remaining",
+        f"{PING} 1′ 00″ remaining",
+        f"{PING} time!",
+    ]
+    assert [at for at, _ in got] == pytest.approx([15 * 60, 19 * 60, 20 * 60], abs=0.1)
+
+
+async def test_a_restart_keeps_a_pause(discord):
+    """The pause survives, and still resumes on its own 30 minutes after it began."""
+    await discord.command("start", hours=0, minutes=10)
+    await discord.click("pause")
+    paused = now()
+    await restart(downtime=60)
+    assert discord.embed().title == "Timer paused: 10 minutes remaining"
+    assert discord.embed().buttons == ["resume", "stop"]
+    await asyncio.sleep(paused + 30 * 60 + 1 - now())
+    assert discord.embed().title == "10 minutes remaining"
+    await asyncio.sleep(10 * 60)
+    assert pings(discord)[-1][1] == f"{PING} time!"
+    assert pings(discord)[-1][0] - paused == pytest.approx(40 * 60, abs=0.1)
+
+
 # ############################################################################### secured
 async def test_secured_timer(discord):
     await discord.command("start", hours=1, secured=True)
@@ -397,7 +467,7 @@ async def test_secured_timer(discord):
 
 
 async def test_no_timer_in_the_channel(discord):
-    """Including a button on an embed that outlived its timer, e.g. across a restart."""
+    """Including a button on an embed that outlived its timer, e.g. one Discord refused to delete."""
     for subcommand in ("pause", "resume", "stop", "display"):
         await discord.command(subcommand)
         assert discord.response().content == timer_bot.NO_TIMER

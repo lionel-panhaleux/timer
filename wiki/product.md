@@ -60,6 +60,12 @@ display it.
 **No timer.** Any command but `start`, or any button, in a channel with no running timer is refused
 ephemerally: "No timer running in this channel".
 
+**Across a restart.** Running timers are kept in a state file on the host
+([operations.md](operations.md#environment)) and resume as the bot starts again, on their original
+deadline — time runs on while the bot is down. Each keeps its author, `secured`, a pause and its
+auto-resume time, and its embed, edited in place. Marks passed while the bot was down are skipped,
+as on an adjustment.
+
 **Stable across deploys.** Command names, options and the buttons' `custom_id`s do not change, so
 buttons on an embed posted before a restart or a deploy still answer.
 
@@ -76,5 +82,4 @@ buttons on an embed posted before a restart or a deploy still answer.
 **PyPI 1.11** — the hikari port — deployed on gravelines by this repo's `ansible/`
 ([operations.md](operations.md#deploy)). Not yet true of the running bot:
 
-- **A restart drops every running timer** — timers live in process memory only. Surviving a restart
-  is wanted.
+- **Surviving a restart** is on `master`, unreleased: 1.11 drops every running timer on a restart.

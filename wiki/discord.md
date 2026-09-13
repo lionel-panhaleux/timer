@@ -65,5 +65,9 @@ sources in `/upkeep`, not code.
 - **Client errors are `hikari.ClientHTTPResponseError`** — `BadRequestError` (400, incl. 30046),
   `ForbiddenError` (403), `NotFoundError` (404); 5xx is `InternalServerError`, outside it.
   [hikari 2.6 source, `errors.py`]
+- **Start and stop order.** `StartingEvent` is dispatched once the REST client is up and before any
+  shard connects, so no interaction precedes its listeners. On close, `StoppingEvent` comes first,
+  then the shards and the REST client close; `run()` then cancels every task still running — its
+  `finally` blocks run. [hikari 2.6 source, `impl/gateway_bot.py`, `internal/aio.py`]
 - **`GatewayBot.__init__` parses the token**, so importing the module needs a well-formed one; the
   test conftest assembles a fake. [hikari 2.6 source, `impl/gateway_bot.py`]

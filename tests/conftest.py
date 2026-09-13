@@ -3,7 +3,7 @@
 Discord is hikari's REST client, swapped for a stand-in that records what the bot sends
 and refuses on request. Interactions are Discord's own payloads, deserialized by hikari:
 the handlers receive the real objects. Time is an event loop whose clock jumps to the
-next scheduled callback instead of waiting for it.
+next scheduled callback instead of waiting for it, and the wall clock reads the same.
 """
 
 import asyncio
@@ -13,7 +13,9 @@ import inspect
 import itertools
 import logging
 import os
+import pathlib
 import selectors
+import time
 import typing
 
 import pytest
@@ -68,7 +70,8 @@ def pytest_pyfunc_call(pyfuncitem: pytest.Function) -> bool | None:
         return None
     arguments = inspect.signature(pyfuncitem.obj).parameters
     kwargs = {name: pyfuncitem.funcargs[name] for name in arguments}
-    with asyncio.Runner(loop_factory=VirtualLoop) as runner:
+    with asyncio.Runner(loop_factory=VirtualLoop) as runner, pytest.MonkeyPatch.context() as patch:
+        patch.setattr(time, "time", runner.get_loop().time)
         runner.run(pyfuncitem.obj(**kwargs))
     return True
 
@@ -388,10 +391,11 @@ class Discord:
 
 @pytest.fixture
 def discord(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, tmp_path: pathlib.Path
 ) -> typing.Iterator[Discord]:
     fake = Discord()
     monkeypatch.setattr(timer_bot.bot, "_rest", fake)
+    monkeypatch.setenv("STATE_DIRECTORY", str(tmp_path))
     timer_bot.TIMERS.clear()
     yield fake
     # hikari logs a listener's exception instead of raising it, as a timer's task does

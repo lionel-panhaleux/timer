@@ -31,6 +31,10 @@ Read via `os.environ`, no settings object; a missing `DISCORD_TOKEN` fails at im
   production token leaves the global command alone but shows `/timer` twice in the debug guild: use
   a separate dev application.
 
+Not in `.env`: `STATE_DIRECTORY`, where `timers.json` — the running timers, read on start — is kept.
+systemd's `StateDirectory=` sets it; unset, it is the working directory, where the file is
+git-ignored.
+
 ## CI
 
 `test.yml` on every PR and push to `master`: uv with Python 3.13, `uv sync --group dev`, ruff check,
@@ -71,9 +75,12 @@ What a converge leaves on the host:
   `journalctl -u timer-bot.service` or `-t timer-bot`. `server-setup`'s Alloy ships the whole journal
   to Grafana Cloud Loki, labelled `unit="timer-bot.service"` and `tag="timer-bot"`: nothing here
   configures log collection.
+- the running timers in `/var/lib/timer-bot/timers.json`, the unit's `StateDirectory=`. Nothing backs
+  it up: it matters only while its timers run.
 
-**A restart drops every running timer** ([product.md](product.md#status-2026-09-13)). A converge
-restarts only when the installed version, the token or the unit changes. Only then does it check, 10
+A restart holds every running timer while the bot is down — they resume on start
+([product.md](product.md#capabilities)), their embeds stale meanwhile — so a converge restarts only
+when the installed version, the token or the unit changes. Only then does it check, 10
 seconds later, that the unit is still `active` in the same run — `Restart=always` makes a crash loop
 pass through `active`; a no-op converge checks nothing and takes no time.
 

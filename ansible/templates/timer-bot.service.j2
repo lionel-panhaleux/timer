@@ -12,6 +12,8 @@ Environment=PYTHONOPTIMIZE=1
 # not Environment=: an inline token is readable by anyone who can run systemctl cat
 EnvironmentFile={{ env_file }}
 ExecStart={{ app_dir }}/venv/bin/timer-bot
+# /var/lib/timer-bot, owned by the service user: the running timers, read on start
+StateDirectory=timer-bot
 Restart=always
 RestartSec=5
 

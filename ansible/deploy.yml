@@ -117,8 +117,8 @@
       changed_when: false
       failed_when: false
 
-    # a restart drops every running timer: install, and so restart, only when
-    # the version actually moves
+    # a restart holds every running timer while the bot is down: install, and so
+    # restart, only when the version actually moves
     - name: Install timer-bot
       ansible.builtin.command:
         cmd: >-

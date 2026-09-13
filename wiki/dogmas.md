@@ -44,8 +44,8 @@ timer ends. One timer's failure never takes down the others.
 ## State
 
 **State that must survive a restart lives in a local file, never a database server.** A full
-database is out of proportion for a handful of running timers. *(Interview, 2026-09-13.)* Until that
-lands, timers are in process memory only.
+database is out of proportion for a handful of running timers. *(Interview, 2026-09-13.)* The running
+timers are one JSON file, rewritten whole on every change.
 
 ## Testing
 

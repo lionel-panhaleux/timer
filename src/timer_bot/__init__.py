@@ -1,7 +1,10 @@
 import asyncio
 import contextlib
+import json
 import logging
 import os
+import pathlib
+import time
 import typing
 
 import hikari
@@ -44,7 +47,8 @@ class CommandFailed(Exception):
 
 
 def _now() -> float:
-    return asyncio.get_running_loop().time()
+    # the wall clock, not the loop's: deadlines in the state file outlive the process
+    return time.time()
 
 
 def time_str(time: float) -> str:
@@ -67,7 +71,7 @@ def time_str(time: float) -> str:
 
 
 class Timer:
-    """One countdown, in TIMERS under its channel until run() ends.
+    """One countdown, in TIMERS and the state file under its channel until run() ends.
 
     Once run() is started, commands only change state and set `wake`, and run() alone writes
     to the channel. A command can still land while a write is awaited: state read before an
@@ -154,20 +158,22 @@ class Timer:
                         await bot.rest.create_message(
                             self.channel_id, "Stopped with " + time_str(self.left())
                         )
-                    return
+                    break
                 await self.render()
                 if self.left() <= 0:
                     logger.info("[%s] Timer finished", self.channel_id)
-                    return
+                    break
+                save()
         except hikari.ClientHTTPResponseError as e:
             logger.info("[%s] Timer dropped, Discord refused: %s", self.channel_id, e)
             if self.message_id:
                 await self._delete(self.message_id)
         except Exception:
             logger.exception("[%s] Timer crashed", self.channel_id)
-        finally:
-            if TIMERS.get(self.channel_id) is self:
-                del TIMERS[self.channel_id]
+        # not a finally: cancelled as the bot stops, the timer stays in the state file
+        if TIMERS.get(self.channel_id) is self:
+            del TIMERS[self.channel_id]
+            save()
 
     async def render(self) -> None:
         left = self.left()
@@ -230,6 +236,33 @@ class Timer:
 TIMERS: dict[hikari.Snowflake, Timer] = {}
 
 
+def _state_file() -> pathlib.Path:
+    # systemd's StateDirectory= sets STATE_DIRECTORY
+    return pathlib.Path(os.environ.get("STATE_DIRECTORY", "."), "timers.json")
+
+
+def save() -> None:
+    """Write every running timer to the state file, atomically."""
+    state = [
+        {
+            "channel_id": timer.channel_id,
+            "author_id": timer.author_id,
+            "secured": timer.secured,
+            "deadline": timer.deadline,
+            "paused_left": timer.paused_left,
+            "resume_at": timer.resume_at,
+            "thresholds": timer.thresholds,
+            "message_id": timer.message_id,
+        }
+        for timer in TIMERS.values()
+        if timer.task
+    ]
+    path = _state_file()
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(json.dumps(state))
+    temporary.replace(path)
+
+
 async def _answer(interaction: Interaction, content: str = "", **kwargs: typing.Any) -> None:
     await interaction.create_initial_response(
         hikari.ResponseType.MESSAGE_CREATE, content, flags=hikari.MessageFlag.EPHEMERAL, **kwargs
@@ -277,6 +310,7 @@ async def timer_start(
             )
             return
         timer.task = asyncio.create_task(timer.run())
+        save()
     finally:
         if timer.task is None:
             del TIMERS[channel_id]
@@ -391,6 +425,37 @@ BUTTONS: dict[str, typing.Callable[[Interaction], typing.Awaitable[None]]] = {
     "resume": timer_resume,
     "stop": timer_stop,
 }
+
+
+@bot.listen()
+async def on_starting(event: hikari.StartingEvent) -> None:
+    """Resume the timers of the last process, before any interaction can arrive."""
+    path = _state_file()
+    if not path.exists():
+        return
+    for entry in json.loads(path.read_text()):
+        channel_id = hikari.Snowflake(entry["channel_id"])
+        timer = Timer(channel_id, hikari.Snowflake(entry["author_id"]), 0, entry["secured"])
+        timer.deadline = entry["deadline"]
+        timer.paused_left = entry["paused_left"]
+        timer.resume_at = entry["resume_at"]
+        if entry["message_id"]:
+            timer.message_id = hikari.Snowflake(entry["message_id"])
+        # marks passed while the bot was down are skipped, as when time is adjusted
+        timer.thresholds = [mark for mark in entry["thresholds"] if mark <= timer.left()]
+        TIMERS[channel_id] = timer
+        timer.wake.set()
+        timer.task = asyncio.create_task(timer.run())
+        logger.info("[%s] Timer resumed after a restart", channel_id)
+
+
+@bot.listen()
+async def on_stopping(event: hikari.StoppingEvent) -> None:
+    # hikari closes the REST client next: a timer waking after that would crash, and leave
+    # the state file
+    for timer in TIMERS.values():
+        if timer.task:
+            timer.task.cancel()
 
 
 @bot.listen()
