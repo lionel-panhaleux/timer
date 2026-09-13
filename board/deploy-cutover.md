@@ -11,8 +11,10 @@ never converged.
 
 All from the repo root. Nothing here should put the token in a terminal log you keep.
 
-1. **Bootstrap the vault.** The token is the one the bot runs on today — read it from the live unit
-   (`sudo systemctl cat timer-bot` on gravelines) or `myserver/timer-bot.yml`'s vault.
+1. **Bootstrap the vault.** The token is the one the bot runs on today, in `myserver/timer-bot.yml`'s
+   vault — not `systemctl cat` on the host, which prints it. Untested (Ansible will not run in the
+   agent's shell): from `myserver`,
+   `yq '.[0].roles[0].pw_env.DISCORD_TOKEN' timer-bot.yml | ansible-vault decrypt --output -`.
    ```shell
    cd ansible
    head -c 32 /dev/urandom | base64 > .vault_pass
@@ -33,7 +35,10 @@ All from the repo root. Nothing here should put the token in a terminal log you 
 - `myserver`: delete `timer-bot.yml`, `roles/python-worker`, README "Setup the Timer Discord Bot".
 - `server-setup/OPERATIONS.md`: drop the `timer-bot.yml` row, the `python-worker` shape section and
   the `/home/lpanhaleux/projects/` paragraph (last `python-worker` gone); `krcg_gra` then has no
-  playbook either.
+  playbook either. Its per-app line says the `ansible/` directories "consume the collection": bots
+  don't.
+- `server-setup/deploy-targets.yml` provisions `DEPLOY_SSH_KEY` into this public repo's `production`
+  environment, and no workflow reads it: ask the human whether CI deploy is wanted, else drop the line.
 - Host: remove `/home/lpanhaleux/projects/timer-bot` (human, or with leave).
 - `wiki/operations.md`: delete "Until the cutover". `product.md` Status and `CLAUDE.md` "Right now":
   deployed from this repo.

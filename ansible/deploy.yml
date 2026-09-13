@@ -135,8 +135,6 @@
         group: "{{ service_user }}"
         mode: "0750"
 
-    # backup: on the first converge the myserver unit this replaces holds the
-    # only other copy of the token on the host
     - name: Write the token
       ansible.builtin.copy:
         content: "DISCORD_TOKEN={{ discord_token }}\n"
@@ -144,10 +142,11 @@
         owner: root
         group: "{{ service_user }}"
         mode: "0640"
-        backup: true
       no_log: true
       notify: Restart timer-bot
 
+    # no backup: the myserver unit this replaces holds the token in clear, and a
+    # 0644 copy of it would outlive the cutover
     - name: Install the systemd unit
       ansible.builtin.template:
         src: timer-bot.service.j2
@@ -155,7 +154,6 @@
         owner: root
         group: root
         mode: "0644"
-        backup: true
       notify: Restart timer-bot
 
     - name: Enable and start the service

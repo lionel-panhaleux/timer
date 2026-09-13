@@ -10,6 +10,7 @@ Tooling is `just` + `uv`. `just` with no recipe lists them.
 | `just test` | `uv run pytest` |
 | `just serve` | runs the bot locally, sourcing `.env` |
 | `just release [minor\|major]` | clean tree required; bump, commit `release: vX.Y`, tag, build, push, `uv publish` to PyPI |
+| `just deploy [version]` | converge a PyPI release onto gravelines — [Deploy](#deploy) |
 | `just clean` | drop build artifacts |
 
 The pre-commit ruff hooks are `repo: local` running `uv run ruff`: `uv.lock` is the only ruff pin.
@@ -61,8 +62,8 @@ What a converge leaves on the host:
   **Python 3.13 fetched by uv** into `/opt/uv/python`; the host's own is 3.11 (Debian 12).
 - system user `timer-bot`; venv `/opt/timer-bot/venv`.
 - the token in `/etc/timer-bot/env` (`root:timer-bot`, 0640), read by `EnvironmentFile=`; the unit
-  itself carries only `PYTHONOPTIMIZE=1`. The copy keeps `backup: true`, so **a token rotation is not
-  finished until `/etc/timer-bot/env.*~` is deleted**.
+  itself carries only `PYTHONOPTIMIZE=1`. Neither file is written with a backup, so a rotation leaves
+  no old token behind.
 - unit `/etc/systemd/system/timer-bot.service`, `Restart=always`, `ExecStart` the venv's `timer-bot`:
   `journalctl -u timer-bot.service`.
 
@@ -76,7 +77,7 @@ that the unit is still the same run — `Restart=always` makes a crash loop pass
 a pre-commit hook refuses it without the vault header. The vault password is committed
 age-encrypted as `ansible/secrets/vault-pass.age`, readable by the public keys in
 `ansible/secrets/age-recipients.txt`. `ansible.cfg` reads it from the git-ignored
-`ansible/.vault_pass`:
+`ansible/.vault_pass` (`age` must be installed on the laptop):
 
 ```shell
 age -d -i ~/.ssh/<key> -o ansible/.vault_pass ansible/secrets/vault-pass.age
