@@ -56,6 +56,12 @@ publicly and re-post the embed; a paused timer stays paused. Subtracting past ze
 **Secured.** On a secured timer only its author may pause, resume, stop, add or subtract; anyone may
 display it.
 
+**No timer.** Any command but `start`, or any button, in a channel with no running timer is refused
+ephemerally: "No timer running in this channel".
+
+**Stable across deploys.** Command names, options and the buttons' `custom_id`s do not change, so
+buttons on an embed posted before a restart or a deploy still answer.
+
 ## Deliberately not
 
 - **No more than one timer per channel.**

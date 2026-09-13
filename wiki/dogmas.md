@@ -26,20 +26,20 @@ Never factor on resemblance.
 justified only by a subtle non-local constraint invisible at the point of reading. No narration, no
 changelogs, **no TODOs** — discovered work goes through ingress or gets done now.
 
-**Raw hikari, no command framework**, as krcg-bot. A `hikari.GatewayBot` with no gateway intents and
-`bot.listen()` listeners; the one `/timer` command is built as a builder and PUT on start; dispatch is a dict from
-subcommand name or button `custom_id` to handler; every channel write goes through `bot.rest` by id.
-`os.getenv` at point of use, no settings object. `__debug__` is the dev/prod switch — see
-[operations.md](operations.md).
+**Raw hikari, no command framework**, as krcg-bot. A `hikari.GatewayBot` with no gateway intents
+and `bot.listen()` listeners; the one `/timer` command is built as a builder and PUT on start;
+dispatch is a dict from subcommand name or button `custom_id` to handler; every channel write goes
+through `bot.rest` by id. `os.environ` at point of use, no settings object. `__debug__` is the
+dev/prod switch — see [operations.md](operations.md).
 
 ## Errors
 
 **Discord refusing a channel write is logged, and the bot carries on**: a
-`hikari.ClientHTTPResponseError` (any 4xx) from an edit, a delete or a send is logged at INFO and worked around (a fresh message, a user-facing
-sentence, or the timer ends). A refusal of the user's request is a `CommandFailed`, answered
-ephemerally. Anything else is raised — except in a timer's own task, where nothing would catch it:
-there it is logged with its traceback and the timer ends. One timer's failure never takes down the
-others.
+`hikari.ClientHTTPResponseError` (any 4xx) from an edit, a delete or a send is logged at INFO and
+worked around (a fresh message, a user-facing sentence, or the timer ends). A refusal of the
+user's request is a `CommandFailed`, answered ephemerally. Anything else is raised — except in a
+timer's own task, where nothing would catch it: there it is logged with its traceback and the
+timer ends. One timer's failure never takes down the others.
 
 ## State
 
@@ -61,8 +61,7 @@ refactors.
   real thing. Discord: **a stand-in for `bot.rest`** records what was sent and scripts refusals, and a
   test asserts it mirrors `RESTClientImpl`'s signatures; interactions are Discord's own JSON payloads
   deserialized by hikari and sent through `bot.dispatch`, so handlers receive the real objects by
-  their real subscription. hikari logs a listener's exception instead of raising it, so any ERROR
-  log fails the test. The clock: tests run on **an event
+  their real subscription. The clock: tests run on **an event
   loop whose clock jumps** to the next scheduled callback, so a two-hour timer runs in milliseconds
   and on time. Never patch the bot's own functions, and don't build a fake Discord server.
 - Exception: property-style tests for the time display and threshold arithmetic — the hazardous

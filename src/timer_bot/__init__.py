@@ -9,7 +9,7 @@ import hikari.impl
 
 logger = logging.getLogger()
 bot = hikari.GatewayBot(
-    os.getenv("DISCORD_TOKEN") or "",
+    os.environ["DISCORD_TOKEN"],
     intents=hikari.Intents.NONE,
     logs="DEBUG" if __debug__ else "INFO",
 )
@@ -285,7 +285,7 @@ async def timer_pause(interaction: Interaction) -> None:
         await interaction.create_initial_response(
             hikari.ResponseType.MESSAGE_CREATE,
             f"<@{timer.author_id}> timer paused by {interaction.user.mention}",
-            user_mentions=[timer.author_id, interaction.user.id],
+            user_mentions=[timer.author_id],
         )
     else:
         await _answer(interaction, "Timer paused")

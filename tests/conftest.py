@@ -152,7 +152,7 @@ class Discord:
         return embed
 
     def texts(self, channel: int = CHANNEL) -> list[Message]:
-        return [m for m in self.messages if m.channel == channel and m.content]
+        return [m for m in self.channel(channel) if m.content]
 
     async def fetch_application(self) -> typing.Any:
         return hikari.Snowflake(APPLICATION)

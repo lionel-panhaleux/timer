@@ -290,7 +290,7 @@ async def test_pausing_someone_elses_timer_is_announced(discord):
     response = discord.response()
     assert not response.ephemeral
     assert response.content == f"<@{AUTHOR}> timer paused by <@{OTHER}>"
-    assert AUTHOR in response.mentions
+    assert response.mentions == [AUTHOR]
 
 
 # ################################################################################## stop

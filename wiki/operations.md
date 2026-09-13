@@ -18,7 +18,8 @@ Python ≥ 3.13. One runtime dependency: `hikari`.
 
 ## Environment
 
-Read via `os.getenv`, no settings object. `.env` (git-ignored) exports:
+Read via `os.environ`, no settings object; a missing `DISCORD_TOKEN` fails at import, naming it.
+`.env` (git-ignored) exports:
 
 - `DISCORD_TOKEN` — the bot token.
 - `PYTHONOPTIMIZE` — **the dev/prod switch.** Set (production sets `1`), `__debug__` is false: commands

@@ -19,9 +19,9 @@ sources in `/upkeep`, not code.
 - **Interactions need no gateway intent.** Events not associated with any intent are sent by
   default, and `INTERACTION_CREATE` is in no intent's list, so the bot connects with
   `Intents.NONE` and receives no guild, message or presence traffic.
-  [gateway](https://docs.discord.com/developers/events/gateway) hikari warns
-  (`MissingIntentWarning`) at `bot.listen()` for an event that needs an intent the bot lacks.
-  [hikari 2.6 source, `impl/event_manager_base.py`]
+  [gateway](https://docs.discord.com/developers/events/gateway)
+- **hikari warns at `bot.listen()`** (`MissingIntentWarning`) for an event that needs an intent the
+  bot lacks. [hikari 2.6 source, `impl/event_manager_base.py`]
 
 ## Slash commands
 
