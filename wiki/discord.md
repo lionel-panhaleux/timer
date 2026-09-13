@@ -15,7 +15,8 @@ sources in `/upkeep`, not code.
   [same page]
 - A button carries a developer-chosen **`custom_id`**; the interaction reports which one was clicked.
   [same page] The interaction arrives whatever process posted the button, so dispatching on the
-  `custom_id` alone **keeps old buttons working after a restart or a deploy**.
+  `custom_id` alone **keeps old buttons working after a restart or a deploy**. [same page; exercised
+  by `tests/test_timer.py::test_no_timer_in_the_channel`]
 
 ## Slash commands
 

@@ -22,8 +22,8 @@ Fan out Haiku readers over `wiki/`, one page each, plus the code each page claim
   depth to topic pages. A topic page earns existence only when the summary line pointing at it is
   much shorter than what it holds; if it isn't, fold it back.
 - **Domain claims have no code to lint against.** Check their *sources* instead — re-fetch the
-  Discord and interactions.py references cited on `discord.md`, and check the locked
-  `discord-py-interactions` version still matches what the page describes. An interview-sourced fact
+  Discord references and the hikari source cited on `discord.md`, and check the locked `hikari`
+  version still matches what the page describes. An interview-sourced fact
   carries a date — flag anything over a year old for re-interview.
 
 Fix what is unambiguous in place. Anything needing a decision goes through `/intake`.

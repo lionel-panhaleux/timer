@@ -10,19 +10,10 @@ import hikari.impl
 logger = logging.getLogger()
 bot = hikari.GatewayBot(os.getenv("DISCORD_TOKEN") or "", logs="DEBUG" if __debug__ else "INFO")
 
-#: every command is scoped to this guild in a debug build, see wiki/operations.md
 DEBUG_GUILD = 161406117686149120
-
-#: fixed list of times on which to send a notification, on top of every whole hour
 THRESHOLDS = [0, 60, 300, 900, 1800]
-
-#: timer embed will display seconds starting from this point int time
 DISPLAY_SECONDS = 5 * 60
-
-#: pause will timeout after this amount of seconds
 PAUSE_TIMEOUT = 1800
-
-#: help message for a running timer
 RUNNING_TIMER_HELP = (
     "- `/timer display` to display it anew\n"
     "- `/timer pause` to pause\n"
@@ -38,7 +29,14 @@ type Interaction = hikari.CommandInteraction | hikari.ComponentInteraction
 
 
 class CommandFailed(Exception):
-    """A refusal: its message is the ephemeral answer."""
+    """A refusal of the user's request, answered ephemerally with its content or embed."""
+
+    def __init__(
+        self, content: str = "", embed: hikari.UndefinedOr[hikari.Embed] = hikari.UNDEFINED
+    ):
+        super().__init__(content)
+        self.content = content
+        self.embed = embed
 
 
 def _now() -> float:
@@ -46,7 +44,6 @@ def _now() -> float:
 
 
 def time_str(time: float) -> str:
-    """Human readable time left, in seconds."""
     seconds = round(time % 60)
     if seconds > 59 or time > DISPLAY_SECONDS:
         seconds = 0
@@ -68,8 +65,8 @@ def time_str(time: float) -> str:
 class Timer:
     """One countdown, in TIMERS under its channel until run() ends.
 
-    Commands only change state and set `wake`: run() alone talks to the channel, so a
-    command landing mid-update never races it on the message.
+    Once run() is started, commands only change state and set `wake`: run() alone talks to
+    the channel, so a command landing mid-update never races it on the message.
     """
 
     def __init__(
@@ -142,13 +139,13 @@ class Timer:
                     await asyncio.wait_for(self.wake.wait(), delay)
                 self.wake.clear()
                 if self.stopped:
+                    if self.message_id:
+                        await self._delete(self.message_id)
+                    logger.info("[%s] Timer stopped", self.channel_id)
                     if self.left() > 0:
                         await bot.rest.create_message(
                             self.channel_id, "Stopped with " + time_str(self.left())
                         )
-                    if self.message_id:
-                        await self._delete(self.message_id)
-                    logger.info("[%s] Timer stopped", self.channel_id)
                     return
                 if self.paused_left is not None and _now() >= self.resume_at:
                     self.resume()
@@ -158,12 +155,15 @@ class Timer:
                     return
         except hikari.ClientHTTPResponseError as e:
             logger.info("[%s] Timer dropped, Discord refused: %s", self.channel_id, e)
+        # nothing awaits this task: its exception would surface only when it is collected
+        except Exception:
+            logger.exception("[%s] Timer crashed", self.channel_id)
+            raise
         finally:
             if TIMERS.get(self.channel_id) is self:
                 del TIMERS[self.channel_id]
 
     async def render(self) -> None:
-        """Post or update the embed, then ping the author if a threshold was reached."""
         left = self.left()
         rows: list[hikari.impl.MessageActionRowBuilder] = []
         if left <= 0:
@@ -194,7 +194,6 @@ class Timer:
                 await bot.rest.edit_message(
                     self.channel_id, self.message_id, embed=embed, components=rows
                 )
-            # messages older than 1h cannot be edited too much, at some point it fails
             except hikari.ClientHTTPResponseError as e:
                 logger.info("[%s] Failed to edit message: %s", self.channel_id, e)
                 old_message_id = self.message_id
@@ -250,13 +249,11 @@ async def timer_start(
     channel_id = interaction.channel_id
     if channel_id in TIMERS:
         embed = hikari.Embed(title="Timer already running", description=RUNNING_TIMER_HELP)
-        await _answer(interaction, embed=embed)
-        return
+        raise CommandFailed(embed=embed)
     total_time = hours * 3600 + minutes * 60
     if not total_time:
         embed = hikari.Embed(title="No time", description="Hours and minutes cannot both be zero.")
-        await _answer(interaction, embed=embed)
-        return
+        raise CommandFailed(embed=embed)
     # claimed before the first await: a start racing this one finds the channel busy
     timer = TIMERS[channel_id] = Timer(channel_id, interaction.user.id, total_time, secured)
     try:
@@ -340,7 +337,6 @@ def _subcommand(name: str, description: str, *options: hikari.CommandOption):
     )
 
 
-#: names, options and button custom_ids are what messages already posted rely on
 TIMER_COMMAND = hikari.impl.SlashCommandBuilder(
     "timer",
     "Countdown timer",
@@ -380,6 +376,7 @@ COMMANDS: dict[str, typing.Callable[..., typing.Awaitable[None]]] = {
     "sub": timer_sub,
     "display": timer_display,
 }
+#: embeds posted by an earlier process still carry these custom_ids
 BUTTONS: dict[str, typing.Callable[[Interaction], typing.Awaitable[None]]] = {
     "pause": timer_pause,
     "resume": timer_resume,
@@ -413,9 +410,8 @@ async def on_interaction(event: hikari.InteractionCreateEvent) -> None:
     try:
         await handler(interaction, **kwargs)
     except CommandFailed as e:
-        await _answer(interaction, str(e))
+        await _answer(interaction, e.content, embed=e.embed)
 
 
 def main() -> None:
-    """Entrypoint"""
     bot.run()

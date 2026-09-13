@@ -10,7 +10,7 @@ import itertools
 import hikari
 import hikari.impl
 import pytest
-from conftest import AUTHOR, CHANNEL, OTHER, Discord, now
+from conftest import AUTHOR, CHANNEL, OTHER, Discord, Message, now
 
 import timer_bot
 
@@ -112,7 +112,8 @@ async def test_start_in_a_busy_channel_is_refused(discord):
     assert discord.embed().title == "10 minutes remaining"
     await asyncio.sleep(10 * 60 + 5)
     assert discord.embed().title == "Timer finished"
-    assert not timer_bot.TIMERS
+    await discord.command("start", user=OTHER, hours=0, minutes=20)
+    assert discord.embeds()[-1].title == "20 minutes remaining"
 
 
 async def test_timers_in_other_channels_run_apart(discord):
@@ -165,7 +166,7 @@ async def test_embed_update_cadence(discord):
 
 
 async def test_refused_edit_posts_a_fresh_embed(discord):
-    """Discord caps edits on messages older than an hour (30046)."""
+    """Discord refuses the edit, as it does past an old message's edit budget (30046)."""
     await discord.command("start", hours=2)
     old = discord.embed()
     discord.refuse["edit_message"] = 1
@@ -176,6 +177,18 @@ async def test_refused_edit_posts_a_fresh_embed(discord):
     await asyncio.sleep(31)
     assert not old.updates[1:]
     assert len(discord.embed().updates) == 2
+
+
+async def test_a_refused_message_ends_the_timer_silently(discord):
+    """Permission revoked mid-run: the timer goes, and the channel is free again."""
+    await discord.command("start", hours=1)
+    discord.refuse["create_message"] = 1
+    await discord.command("display")
+    assert not discord.embeds()
+    await asyncio.sleep(3600)
+    assert not discord.embeds()
+    await discord.command("start", hours=0, minutes=20)
+    assert discord.embed().title == "20 minutes remaining"
 
 
 # ################################################################################# pings
@@ -274,7 +287,8 @@ async def test_stop(discord, stop):
     assert [m.content for m in discord.channel()] == ["Stopped with 9 minutes remaining"]
     await asyncio.sleep(3600)
     assert [m.content for m in discord.channel()] == ["Stopped with 9 minutes remaining"]
-    assert not timer_bot.TIMERS
+    await discord.command("start", hours=0, minutes=20)
+    assert discord.embed().title == "20 minutes remaining"
 
 
 # ################################################################################ adjust
@@ -302,7 +316,8 @@ async def test_subtracting_past_zero_finishes(discord):
     await discord.command("start", hours=0, minutes=10)
     await discord.command("sub", minutes=30)
     assert discord.embed().title == "Timer finished"
-    assert not timer_bot.TIMERS
+    await discord.command("start", hours=0, minutes=20)
+    assert discord.embeds()[-1].title == "20 minutes remaining"
 
 
 # ############################################################################### display
@@ -310,7 +325,7 @@ async def test_display_reposts_at_the_bottom(discord):
     await discord.command("start", hours=1)
     old = discord.embed()
     discord.messages.append(  # someone talks in the channel
-        type(old)(
+        Message(
             id=hikari.Snowflake(1),
             channel=CHANNEL,
             content="hi",

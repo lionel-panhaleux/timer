@@ -365,5 +365,5 @@ class Discord:
 def discord(monkeypatch: pytest.MonkeyPatch) -> Discord:
     fake = Discord()
     monkeypatch.setattr(timer_bot.bot, "_rest", fake)
-    monkeypatch.setattr(timer_bot, "TIMERS", {})
+    timer_bot.TIMERS.clear()
     return fake

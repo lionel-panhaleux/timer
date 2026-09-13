@@ -17,7 +17,7 @@ Plans, findings and reasoning journeys do not live here — they die with their 
 ## Domain
 
 - [discord.md](discord.md) — Discord interactions, slash commands, rate limits and error codes, and
-  the interactions.py traps this bot sits on.
+  the hikari traps this bot sits on.
 
 ## The board
 

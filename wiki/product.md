@@ -73,5 +73,6 @@ moves (on the board). Not yet true of the running bot:
 
 - The one-timer-per-channel refusal never fires in 1.10: a second start runs a second timer. Fixed
   on `master`.
+- Commands in a thread missing from the library's cache crash in 1.10. Fixed on `master`.
 - **A restart drops every running timer** — timers live in process memory only. Surviving a restart
   is wanted, on the board.
