@@ -118,11 +118,12 @@
       failed_when: false
 
     # a restart holds every running timer while the bot is down: install, and so
-    # restart, only when the version actually moves
+    # restart, only when the version actually moves. No cache: a deploy right
+    # after `just release` must not resolve against an index cached before it
     - name: Install timer-bot
       ansible.builtin.command:
         cmd: >-
-          {{ uv_bin }} pip install --python {{ app_dir }}/venv/bin/python
+          {{ uv_bin }} pip install --no-cache --python {{ app_dir }}/venv/bin/python
           timer-bot=={{ version }}
       environment:
         UV_PYTHON_INSTALL_DIR: "{{ uv_python_dir }}"

@@ -55,8 +55,12 @@ Ansible refuses a shell whose stdio is non-blocking — an agent's shell, or `!`
 "Ansible requires blocking IO". Give it a pseudo-terminal: `script -q /dev/null just deploy 1.10`.
 
 It installs `timer-bot==<version>` **from PyPI**: what runs answers to a release, and no path ships
-the working tree. There is no CI deploy ([dogmas.md](dogmas.md#commits-releases-deploys)), so this
-repo is not in `server-setup/deploy-targets.yml` and has no GitHub environment.
+the working tree. The install runs `uv pip install --no-cache`, so a deploy straight after
+`just release` resolves against PyPI's index, never one uv cached before the upload; PyPI's CDN can
+still lag an upload by a minute or so, and a "no version of timer-bot==X.Y" then clears on a re-run.
+
+There is no CI deploy ([dogmas.md](dogmas.md#commits-releases-deploys)), so this repo is not in
+`server-setup/deploy-targets.yml` and has no GitHub environment.
 
 `ansible-core` is the `deploy` dependency group (`uv run --group deploy`), out of `dev` so CI never
 installs it. The play uses only `ansible.builtin` — the `server_setup` collection's roles are `nginx_site` and
