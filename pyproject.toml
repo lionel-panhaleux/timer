@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "timer-bot"
-version = "1.10"
+version = "1.11"
 authors = [
     { name = "Lionel Panhaleux", email = "lionel.panhaleux+timer@gmail.com" },
 ]
