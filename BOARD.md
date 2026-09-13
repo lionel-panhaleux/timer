@@ -16,6 +16,4 @@ follow-up ("chase @someone, 12 Oct"), owned by whoever wrote it.
 
 ---
 
-- Refresh the README badges — they claim Python 3.8 and black; it is 3.13 and ruff. Done: badges match `pyproject.toml`.
-
 <!-- cycles-since-upkeep: 4 -->
