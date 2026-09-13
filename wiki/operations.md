@@ -46,6 +46,9 @@ just deploy        # the version in pyproject.toml
 just deploy 1.10   # any major.minor on PyPI: a rollback
 ```
 
+Ansible refuses a shell whose stdio is non-blocking — an agent's shell, or `!` in Claude Code — with
+"Ansible requires blocking IO". Give it a pseudo-terminal: `script -q /dev/null just deploy 1.10`.
+
 It installs `timer-bot==<version>` **from PyPI**: what runs answers to a release, and no path ships
 the working tree. There is no CI deploy ([dogmas.md](dogmas.md#commits-releases-deploys)), so this
 repo is not in `server-setup/deploy-targets.yml` and has no GitHub environment.
