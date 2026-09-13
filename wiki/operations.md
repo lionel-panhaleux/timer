@@ -48,7 +48,7 @@ just deploy 1.10   # any major.minor on PyPI: a rollback
 
 It installs `timer-bot==<version>` **from PyPI**: what runs answers to a release, and no path ships
 the working tree. There is no CI deploy ([dogmas.md](dogmas.md#commits-releases-deploys)), so this
-repo is not in `server-setup/deploy-targets.yml`.
+repo is not in `server-setup/deploy-targets.yml` and has no GitHub environment.
 
 `ansible-core` is the `deploy` dependency group (`uv run --group deploy`), out of `dev` so CI never
 installs it. The play uses only `ansible.builtin` — the `server_setup` collection's roles are `nginx_site` and
