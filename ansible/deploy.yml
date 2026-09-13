@@ -1,0 +1,195 @@
+---
+# Install a PyPI release of timer-bot onto the bot host and restart the unit.
+#
+#   DEPLOY_HOST=<host> ansible-playbook deploy.yml -e version=X.Y
+#
+# `just deploy` runs it. The token comes from vault.yml; -e discord_token=...
+# overrides it, since extra-vars outrank vars_files.
+- name: Deploy timer-bot
+  hosts: bot
+  become: true
+  # nothing here reads a fact, and gathering them would beat the input check to
+  # the connection — an empty DEPLOY_HOST should fail with a sentence
+  gather_facts: false
+
+  vars:
+    app_dir: /opt/timer-bot
+    env_dir: /etc/timer-bot
+    env_file: /etc/timer-bot/env
+    service_user: timer-bot
+    # the host python is the distro's (3.11 on Debian 12) and releases need
+    # >=3.13: uv fetches the interpreter instead of the host providing it
+    python_version: "3.13"
+    # shared with krcg-bot on the same host: same binary, same interpreter store
+    uv_bin: /usr/local/bin/uv
+    uv_version: "0.11.32"
+    uv_python_dir: /opt/uv/python
+    version: ""
+
+  vars_files:
+    - vault.yml
+
+  pre_tasks:
+    - name: Check the deploy inputs
+      ansible.builtin.assert:
+        that:
+          - version | length > 0
+          - ansible_host | length > 0
+          - discord_token | default('') | length > 0
+        fail_msg: >-
+          needs a version (-e version=X.Y, published on PyPI), DEPLOY_HOST in the
+          environment, and discord_token from vault.yml
+      delegate_to: localhost
+      become: false
+
+  tasks:
+    - name: Look for uv
+      ansible.builtin.command: "{{ uv_bin }} --version"
+      register: uv_present
+      changed_when: false
+      failed_when: false
+
+    # only when missing: krcg-bot runs off the same uv, and this deploy has no
+    # business upgrading its toolchain
+    - name: Fetch the uv installer
+      ansible.builtin.get_url:
+        url: "https://astral.sh/uv/{{ uv_version }}/install.sh"
+        dest: /tmp/uv-install.sh
+        mode: "0755"
+      when: uv_present.rc != 0
+
+    - name: Install uv
+      ansible.builtin.command: /tmp/uv-install.sh
+      environment:
+        UV_INSTALL_DIR: "{{ uv_bin | dirname }}"
+        INSTALLER_NO_MODIFY_PATH: "1"
+      when: uv_present.rc != 0
+      changed_when: true
+
+    - name: Create the service user
+      ansible.builtin.user:
+        name: "{{ service_user }}"
+        system: true
+        shell: /usr/sbin/nologin
+        home: "{{ app_dir }}"
+        create_home: false
+
+    - name: Create the application directory
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ service_user }}"
+        group: "{{ service_user }}"
+        mode: "0755"
+
+    - name: Create the managed Python directory
+      ansible.builtin.file:
+        path: "{{ uv_python_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Check the virtualenv interpreter
+      ansible.builtin.command: "{{ app_dir }}/venv/bin/python -V"
+      register: venv_python
+      changed_when: false
+      failed_when: false
+
+    - name: Create the virtualenv
+      ansible.builtin.command:
+        cmd: "{{ uv_bin }} venv --python {{ python_version }} {{ app_dir }}/venv"
+      environment:
+        UV_PYTHON_INSTALL_DIR: "{{ uv_python_dir }}"
+      register: venv
+      when: >-
+        venv_python.rc != 0
+        or venv_python.stdout.split()[1] is version(python_version, '<')
+
+    - name: Read the installed version
+      ansible.builtin.command:
+        cmd: >-
+          {{ app_dir }}/venv/bin/python -c
+          "import importlib.metadata as m; print(m.version('timer-bot'))"
+      register: installed
+      changed_when: false
+      failed_when: false
+
+    # a restart drops every running timer: install, and so restart, only when
+    # the version actually moves
+    - name: Install timer-bot
+      ansible.builtin.command:
+        cmd: >-
+          {{ uv_bin }} pip install --python {{ app_dir }}/venv/bin/python
+          timer-bot=={{ version }}
+      environment:
+        UV_PYTHON_INSTALL_DIR: "{{ uv_python_dir }}"
+      when: venv is changed or installed.stdout != version
+      notify: Restart timer-bot
+
+    - name: Create the environment directory
+      ansible.builtin.file:
+        path: "{{ env_dir }}"
+        state: directory
+        owner: root
+        group: "{{ service_user }}"
+        mode: "0750"
+
+    # backup: on the first converge the myserver unit this replaces holds the
+    # only other copy of the token on the host
+    - name: Write the token
+      ansible.builtin.copy:
+        content: "DISCORD_TOKEN={{ discord_token }}\n"
+        dest: "{{ env_file }}"
+        owner: root
+        group: "{{ service_user }}"
+        mode: "0640"
+        backup: true
+      no_log: true
+      notify: Restart timer-bot
+
+    - name: Install the systemd unit
+      ansible.builtin.template:
+        src: timer-bot.service.j2
+        dest: /etc/systemd/system/timer-bot.service
+        owner: root
+        group: root
+        mode: "0644"
+        backup: true
+      notify: Restart timer-bot
+
+    - name: Enable and start the service
+      ansible.builtin.systemd_service:
+        name: timer-bot
+        enabled: true
+        state: started
+        daemon_reload: true
+
+  post_tasks:
+    - name: Note the running unit
+      ansible.builtin.systemd_service:
+        name: timer-bot
+      register: unit
+      changed_when: false
+
+    - name: Let it settle
+      ansible.builtin.wait_for:
+        timeout: 20
+
+    # Restart=always means a crash-looping bot passes through "active" between
+    # restarts: the honest check is that it is still the same run afterwards
+    - name: Check it stayed up
+      ansible.builtin.systemd_service:
+        name: timer-bot
+      register: settled
+      failed_when: >-
+        settled.status.ActiveState != "active"
+        or settled.status.NRestarts != unit.status.NRestarts
+      changed_when: false
+
+  handlers:
+    - name: Restart timer-bot
+      ansible.builtin.systemd_service:
+        name: timer-bot
+        state: restarted
+        daemon_reload: true

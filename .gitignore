@@ -11,6 +11,9 @@ dist/
 .venv/
 venv/
 
+# Deploy — the decrypted vault password
+ansible/.vault_pass
+
 # IDEs
 .vscode/
 

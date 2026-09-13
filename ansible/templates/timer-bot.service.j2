@@ -1,0 +1,19 @@
+[Unit]
+Description=timer-bot
+Documentation=https://github.com/lionel-panhaleux/timer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ service_user }}
+WorkingDirectory={{ app_dir }}
+Environment=PYTHONOPTIMIZE=1
+# not Environment=: an inline token is readable by anyone who can run systemctl cat
+EnvironmentFile={{ env_file }}
+ExecStart={{ app_dir }}/venv/bin/timer-bot
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

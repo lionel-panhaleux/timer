@@ -74,8 +74,9 @@ buttons on an embed posted before a restart or a deploy still answer.
 
 **PyPI 1.10**, deployed on gravelines from `myserver` ([operations.md](operations.md)).
 
-`master` is ported to hikari and unreleased; a release cannot install on the host until the deploy
-moves ([operations.md](operations.md#deploy--today)). Not yet true of the running bot:
+This repo's `ansible/` deploy is written but has never converged: no vault is bootstrapped yet, and
+a release cannot install on the host before it does ([operations.md](operations.md#until-the-cutover)).
+`master` is ported to hikari and unreleased. Not yet true of the running bot:
 
 - The one-timer-per-channel refusal never fires in 1.10: a second start runs a second timer. Fixed
   on `master`.

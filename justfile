@@ -27,6 +27,17 @@ test:
 serve:
     set -a && source .env && set +a && uv run timer-bot
 
+# Deploy a PyPI release to gravelines (defaults to the version in pyproject.toml). Needs DEPLOY_HOST.
+deploy version="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    : "${DEPLOY_HOST:?set DEPLOY_HOST to the bot host address}"
+    [[ -f ansible/.vault_pass ]] || { echo "no ansible/.vault_pass — age -d -i ~/.ssh/<key> -o ansible/.vault_pass ansible/secrets/vault-pass.age"; exit 1; }
+    version="{{ version }}"
+    [[ -n "$version" ]] || version=$(uv version --short)
+    cd ansible
+    uv run --group deploy ansible-playbook deploy.yml -e version="$version"
+
 # Remove build artifacts
 clean:
     rm -rf dist build *.egg-info src/*.egg-info

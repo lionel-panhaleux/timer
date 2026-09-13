@@ -6,10 +6,19 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        exclude: ^ansible/vault\.yml$
       - id: check-merge-conflict
 
   - repo: local
     hooks:
+      # the repo is public and the vault holds the live bot token: check-yaml
+      # accepts plaintext, so refuse anything without the vault header
+      - id: vault-encrypted
+        name: ansible vault is encrypted
+        entry: sh -c 'head -1 ansible/vault.yml | grep -q "^\$ANSIBLE_VAULT" || { echo "ansible/vault.yml is NOT encrypted"; exit 1; }'
+        language: system
+        files: ^ansible/vault\.yml$
+        pass_filenames: false
       - id: ruff
         name: ruff check
         entry: uv run ruff check --fix

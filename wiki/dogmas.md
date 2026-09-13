@@ -92,9 +92,8 @@ Describe the change itself in the message. When a commit fixes a GitHub issue, c
 **`just release` is the only way a version moves** (`major.minor`, default minor bump). Releasing
 publishes to PyPI and deploying restarts the public bot: both are the human's call.
 
-**Deploys move to this repo.** The legacy `myserver` playbook goes; the bot gets a per-app `ansible/`
-directory consuming the `lionel_panhaleux.server_setup` collection, as krcg-bot did.
-*(Interview, 2026-09-13.)*
+**Deploys live in this repo**, a per-app `ansible/` directory as krcg-bot's — never a shared deploy
+repo. *(Interview, 2026-09-13.)*
 
 ## Human inflexion points
 
