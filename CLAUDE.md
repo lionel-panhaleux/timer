@@ -42,8 +42,9 @@ than a third.
 
 ## Commands
 
-`just` with no recipe lists them: `just lint`, `just typecheck`, `just test`, `just serve`, `just release`. Env vars,
-the `PYTHONOPTIMIZE` dev/prod switch, CI and deploy are in [`wiki/operations.md`](wiki/operations.md).
+`just` with no recipe lists them: `just lint`, `just typecheck`, `just test`, `just serve`,
+`just release`. Env vars, the `PYTHONOPTIMIZE` dev/prod switch, CI and deploy are in
+[`wiki/operations.md`](wiki/operations.md).
 
 ## Commits
 

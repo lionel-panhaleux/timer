@@ -12,6 +12,8 @@ Tooling is `just` + `uv`. `just` with no recipe lists them.
 | `just release [minor\|major]` | clean tree required; bump, commit `release: vX.Y`, tag, build, push, `uv publish` to PyPI |
 | `just clean` | drop build artifacts |
 
+The pre-commit ruff hooks are `repo: local` running `uv run ruff`: `uv.lock` is the only ruff pin.
+
 Python ≥ 3.13. One runtime dependency that matters: `discord-py-interactions` (plus `uvloop`).
 
 ## Environment
@@ -29,8 +31,6 @@ Read via `os.getenv`, no settings object. `.env` (git-ignored) exports:
 
 `test.yml` on every PR and push to `master`: uv with Python 3.13, `uv sync --group dev`, ruff check,
 ruff format check, ty, pytest. pytest exits 5 when it collects no tests, which fails the job.
-
-The pre-commit ruff hooks are `repo: local` running `uv run ruff`: `uv.lock` is the only ruff pin.
 
 ## Deploy — today
 
