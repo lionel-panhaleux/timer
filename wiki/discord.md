@@ -15,8 +15,13 @@ sources in `/upkeep`, not code.
   [same page]
 - A button carries a developer-chosen **`custom_id`**; the interaction reports which one was clicked.
   [same page] The interaction arrives whatever process posted the button, so dispatching on the
-  `custom_id` alone **keeps old buttons working after a restart or a deploy**. [same page; exercised
-  by `tests/test_timer.py::test_no_timer_in_the_channel`]
+  `custom_id` alone **keeps old buttons working after a restart or a deploy**. [same page]
+- **Interactions need no gateway intent.** Events not associated with any intent are sent by
+  default, and `INTERACTION_CREATE` is in no intent's list, so the bot connects with
+  `Intents.NONE` and receives no guild, message or presence traffic.
+  [gateway](https://docs.discord.com/developers/events/gateway) hikari warns
+  (`MissingIntentWarning`) at `bot.listen()` for an event that needs an intent the bot lacks.
+  [hikari 2.6 source, `impl/event_manager_base.py`]
 
 ## Slash commands
 

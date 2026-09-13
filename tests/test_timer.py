@@ -29,14 +29,13 @@ def test_the_stand_in_mirrors_the_rest_client():
             continue
         real = inspect.signature(getattr(hikari.impl.RESTClientImpl, name)).parameters
         for parameter in inspect.signature(method).parameters.values():
-            if parameter.kind is not parameter.VAR_KEYWORD:
-                assert parameter.name in real, (name, parameter.name)
-                assert real[parameter.name].kind == parameter.kind, (name, parameter.name)
+            assert parameter.name in real, (name, parameter.name)
+            assert real[parameter.name].kind == parameter.kind, (name, parameter.name)
 
 
 async def test_commands_and_buttons_keep_their_names(discord):
     """Messages posted before a deploy keep working: names, options and custom_ids hold."""
-    await timer_bot.on_started(hikari.StartedEvent(app=timer_bot.bot))
+    await timer_bot.bot.dispatch(hikari.StartedEvent(app=timer_bot.bot), return_tasks=True)
     (command,) = discord.commands
     assert command.name == "timer"
     options = {
@@ -83,13 +82,16 @@ async def test_start_refuses_no_time(discord):
     assert discord.embed().title == "6 minutes remaining"
 
 
-async def test_start_in_a_thread(discord):
-    """A thread is never in hikari's cache: the channel comes from the payload alone."""
-    thread = CHANNEL + 1
-    await discord.command("start", channel=thread, channel_type=11, hours=0, minutes=10)
-    assert discord.embed(thread).title == "10 minutes remaining"
-    await discord.command("pause", channel=thread)
-    assert discord.embed(thread).title == "Timer paused: 10 minutes remaining"
+@pytest.mark.parametrize(
+    "channel_type", [hikari.ChannelType.GUILD_PUBLIC_THREAD, hikari.ChannelType.GUILD_VOICE]
+)
+async def test_start_in_a_thread_or_a_voice_channel_chat(discord, channel_type):
+    """Neither is in hikari's cache: the channel comes from the payload alone."""
+    channel = CHANNEL + 1
+    await discord.command("start", channel=channel, channel_type=channel_type, hours=0, minutes=10)
+    assert discord.embed(channel).title == "10 minutes remaining"
+    await discord.command("pause", channel=channel)
+    assert discord.embed(channel).title == "Timer paused: 10 minutes remaining"
 
 
 async def test_start_without_permission_to_send(discord):
@@ -275,6 +277,8 @@ async def test_pause_resumes_on_its_own_after_30_minutes(discord):
     assert discord.embed().title == "Timer paused: 10 minutes remaining"
     await asyncio.sleep(2)
     assert discord.embed().title == "10 minutes remaining"
+    resumed = [t for t, _ in discord.embed().updates if t > paused + 30 * 60 - 1]
+    assert resumed == [pytest.approx(paused + 30 * 60, abs=0.1)]
     await asyncio.sleep(10 * 60)
     assert pings(discord)[-1][1] == f"{PING} time!"
     assert pings(discord)[-1][0] - paused == pytest.approx(40 * 60, abs=0.1)

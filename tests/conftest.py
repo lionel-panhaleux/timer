@@ -11,6 +11,7 @@ import base64
 import dataclasses
 import inspect
 import itertools
+import logging
 import os
 import selectors
 import typing
@@ -214,9 +215,17 @@ class Discord:
         content: typing.Any = hikari.UNDEFINED,
         *,
         flags: typing.Any = hikari.UNDEFINED,
+        tts: typing.Any = hikari.UNDEFINED,
+        attachment: typing.Any = hikari.UNDEFINED,
+        attachments: typing.Any = hikari.UNDEFINED,
+        component: typing.Any = hikari.UNDEFINED,
+        components: typing.Any = hikari.UNDEFINED,
         embed: typing.Any = hikari.UNDEFINED,
+        embeds: typing.Any = hikari.UNDEFINED,
+        poll: typing.Any = hikari.UNDEFINED,
+        mentions_everyone: typing.Any = hikari.UNDEFINED,
         user_mentions: typing.Any = hikari.UNDEFINED,
-        **kwargs: typing.Any,
+        role_mentions: typing.Any = hikari.UNDEFINED,
     ) -> None:
         await self._call("create_interaction_response")
         self.responses.append(
@@ -232,7 +241,20 @@ class Discord:
         )
 
     async def edit_interaction_response(
-        self, application: typing.Any, token: str, content: typing.Any = hikari.UNDEFINED, **kwargs
+        self,
+        application: typing.Any,
+        token: str,
+        content: typing.Any = hikari.UNDEFINED,
+        *,
+        attachment: typing.Any = hikari.UNDEFINED,
+        attachments: typing.Any = hikari.UNDEFINED,
+        component: typing.Any = hikari.UNDEFINED,
+        components: typing.Any = hikari.UNDEFINED,
+        embed: typing.Any = hikari.UNDEFINED,
+        embeds: typing.Any = hikari.UNDEFINED,
+        mentions_everyone: typing.Any = hikari.UNDEFINED,
+        user_mentions: typing.Any = hikari.UNDEFINED,
+        role_mentions: typing.Any = hikari.UNDEFINED,
     ) -> None:
         await self._call("edit_interaction_response")
         response = next(r for r in self.responses if r.token == token)
@@ -360,14 +382,19 @@ class Discord:
         event = hikari.InteractionCreateEvent(
             shard=typing.cast(typing.Any, None), interaction=interaction
         )
-        await timer_bot.on_interaction(event)
+        await timer_bot.bot.dispatch(event, return_tasks=True)
         # let the timer's own task take what the interaction woke it for
         await asyncio.sleep(0.01)
 
 
 @pytest.fixture
-def discord(monkeypatch: pytest.MonkeyPatch) -> Discord:
+def discord(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> typing.Iterator[Discord]:
     fake = Discord()
     monkeypatch.setattr(timer_bot.bot, "_rest", fake)
     timer_bot.TIMERS.clear()
-    return fake
+    yield fake
+    # hikari logs a listener's exception instead of raising it, as a timer's task does
+    errors = [r for r in caplog.get_records("call") if r.levelno >= logging.ERROR]
+    assert not [r.getMessage() for r in errors]

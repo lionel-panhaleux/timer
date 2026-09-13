@@ -8,7 +8,11 @@ import hikari
 import hikari.impl
 
 logger = logging.getLogger()
-bot = hikari.GatewayBot(os.getenv("DISCORD_TOKEN") or "", logs="DEBUG" if __debug__ else "INFO")
+bot = hikari.GatewayBot(
+    os.getenv("DISCORD_TOKEN") or "",
+    intents=hikari.Intents.NONE,
+    logs="DEBUG" if __debug__ else "INFO",
+)
 
 DEBUG_GUILD = 161406117686149120
 THRESHOLDS = [0, 60, 300, 900, 1800]
@@ -138,6 +142,9 @@ class Timer:
                         delay = min(delay, left - self.thresholds[-1])
                 with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(self.wake.wait(), delay)
+                if self.paused_left is not None and _now() >= self.resume_at:
+                    self.resume()
+                # after resume(), whose wake this pass serves: cleared later, it renders twice
                 self.wake.clear()
                 if self.stopped:
                     if self.message_id:
@@ -148,8 +155,6 @@ class Timer:
                             self.channel_id, "Stopped with " + time_str(self.left())
                         )
                     return
-                if self.paused_left is not None and _now() >= self.resume_at:
-                    self.resume()
                 await self.render()
                 if self.left() <= 0:
                     logger.info("[%s] Timer finished", self.channel_id)
