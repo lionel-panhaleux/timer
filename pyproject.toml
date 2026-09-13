@@ -31,7 +31,7 @@ dependencies = [
 timer-bot = "timer_bot:main"
 
 [project.urls]
-Repository = "https://github.com/lionel-panhaleux/timer-bot"
+Repository = "https://github.com/lionel-panhaleux/timer"
 
 [dependency-groups]
 deploy = ["ansible-core"]
