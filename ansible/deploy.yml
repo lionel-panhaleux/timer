@@ -137,6 +137,7 @@
         group: "{{ service_user }}"
         mode: "0750"
 
+    # no backup: every rotation would leave the old token on the host
     - name: Write the token
       ansible.builtin.copy:
         content: "DISCORD_TOKEN={{ discord_token }}\n"
@@ -147,8 +148,6 @@
       no_log: true
       notify: Restart timer-bot
 
-    # no backup: the myserver unit this replaces holds the token in clear, and a
-    # 0644 copy of it would outlive the cutover
     - name: Install the systemd unit
       ansible.builtin.template:
         src: timer-bot.service.j2
