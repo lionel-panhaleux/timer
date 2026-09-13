@@ -127,7 +127,7 @@
       environment:
         UV_PYTHON_INSTALL_DIR: "{{ uv_python_dir }}"
       when: venv is changed or installed.stdout != version
-      notify: Restart timer-bot
+      notify: restart timer-bot
 
     - name: Create the environment directory
       ansible.builtin.file:
@@ -146,7 +146,7 @@
         group: "{{ service_user }}"
         mode: "0640"
       no_log: true
-      notify: Restart timer-bot
+      notify: restart timer-bot
 
     - name: Install the systemd unit
       ansible.builtin.template:
@@ -155,7 +155,7 @@
         owner: root
         group: root
         mode: "0644"
-      notify: Restart timer-bot
+      notify: restart timer-bot
 
     - name: Enable and start the service
       ansible.builtin.systemd_service:
@@ -164,19 +164,29 @@
         state: started
         daemon_reload: true
 
-  post_tasks:
+  # handlers run in this order, and only when something notified a restart: a
+  # no-op converge skips the check entirely
+  handlers:
+    - name: Restart timer-bot
+      ansible.builtin.systemd_service:
+        name: timer-bot
+        state: restarted
+        daemon_reload: true
+      listen: restart timer-bot
+
     - name: Note the running unit
       ansible.builtin.systemd_service:
         name: timer-bot
       register: unit
-      changed_when: false
+      listen: restart timer-bot
 
+    # a startup crash (bad token, import error) lands within ~2s, then sits in
+    # auto-restart for RestartSec=5: at 5s it is not "active", or it restarted
     - name: Let it settle
       ansible.builtin.wait_for:
-        timeout: 20
+        timeout: 5
+      listen: restart timer-bot
 
-    # Restart=always means a crash-looping bot passes through "active" between
-    # restarts: the honest check is that it is still the same run afterwards
     - name: Check it stayed up
       ansible.builtin.systemd_service:
         name: timer-bot
@@ -184,11 +194,4 @@
       failed_when: >-
         settled.status.ActiveState != "active"
         or settled.status.NRestarts != unit.status.NRestarts
-      changed_when: false
-
-  handlers:
-    - name: Restart timer-bot
-      ansible.builtin.systemd_service:
-        name: timer-bot
-        state: restarted
-        daemon_reload: true
+      listen: restart timer-bot
