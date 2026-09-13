@@ -31,7 +31,7 @@ serve:
 deploy version="":
     #!/usr/bin/env bash
     set -euo pipefail
-    [[ -f ansible/.vault_pass ]] || { echo "no ansible/.vault_pass — age -d -i ~/.ssh/<key> -o ansible/.vault_pass ansible/secrets/vault-pass.age"; exit 1; }
+    [[ -f ansible/.vault_pass ]] || { echo "no ansible/.vault_pass — see wiki/operations.md#secrets"; exit 1; }
     version="{{ version }}"
     [[ -n "$version" ]] || version=$(uv version --short)
     cd ansible
