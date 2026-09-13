@@ -73,7 +73,7 @@ What a converge leaves on the host:
   configures log collection.
 
 **A restart drops every running timer** ([product.md](product.md#status-2026-09-13)). A converge
-restarts only when the installed version, the token or the unit changes. Only then does it check, 5
+restarts only when the installed version, the token or the unit changes. Only then does it check, 10
 seconds later, that the unit is still `active` in the same run — `Restart=always` makes a crash loop
 pass through `active`; a no-op converge checks nothing and takes no time.
 

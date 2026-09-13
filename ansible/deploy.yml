@@ -181,10 +181,10 @@
       listen: restart timer-bot
 
     # a startup crash (bad token, import error) lands within ~2s, then sits in
-    # auto-restart for RestartSec=5: at 5s it is not "active", or it restarted
+    # auto-restart for RestartSec=5: by 10s it is not "active", or it restarted
     - name: Let it settle
       ansible.builtin.wait_for:
-        timeout: 5
+        timeout: 10
       listen: restart timer-bot
 
     - name: Check it stayed up
