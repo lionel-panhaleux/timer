@@ -19,4 +19,4 @@ follow-up ("chase @someone, 12 Oct"), owned by whoever wrote it.
 - Answer GitHub issue #2 ("tried to self host but doesnt work", open since 2022-11-30). Done: the issue has a reply and is closed.
 - Refresh the README badges — they claim Python 3.8 and black; it is 3.13 and ruff. Done: badges match `pyproject.toml`.
 
-<!-- cycles-since-upkeep: 3 -->
+<!-- cycles-since-upkeep: 4 -->
