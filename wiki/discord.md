@@ -1,8 +1,8 @@
 # Discord — the platform we run on
 
-Standing knowledge of Discord and of `discord-py-interactions` (imported as `interactions`), scoped to
-what a single-message countdown bot touches. Every claim names its source; retrieved 2026-09-13
-against locked `discord-py-interactions` 5.16.0. Re-check sources in `/upkeep`, not code.
+Standing knowledge of Discord and of `hikari`, scoped to what a single-message countdown bot
+touches. Every claim names its source; retrieved 2026-09-13 against locked `hikari` 2.6.0. Re-check
+sources in `/upkeep`, not code.
 
 ## Interactions
 
@@ -10,18 +10,19 @@ against locked `discord-py-interactions` 5.16.0. Re-check sources in `/upkeep`, 
   **15 minutes**; follow-ups and edits through the interaction only work inside that window.
   [receiving-and-responding](https://docs.discord.com/developers/interactions/receiving-and-responding)
   — so anything the bot does to a timer message *later* (the countdown runs for up to 24h+) goes
-  through the channel API as the bot, never through `ctx`.
-- **Ephemeral** responses (the `EPHEMERAL` flag, `ephemeral=True`) are visible only to the invoking
-  user. [same page]
+  through the channel API as the bot (`bot.rest`), never through the interaction.
+- **Ephemeral** responses (the `EPHEMERAL` message flag) are visible only to the invoking user.
+  [same page]
 - A button carries a developer-chosen **`custom_id`**; the interaction reports which one was clicked.
-  [same page] In interactions.py, `@component_callback("<custom_id>")` handles it and **keeps working
-  after a restart** — a button on an old message still reaches the new process.
-  [interactions.py, Components guide](https://github.com/interactions-py/interactions.py/blob/stable/docs/src/Guides/05%20Components.md)
+  [same page] The interaction arrives whatever process posted the button, so dispatching on the
+  `custom_id` alone **keeps old buttons working after a restart or a deploy**.
 
 ## Slash commands
 
-- Commands are **global** by default; `debug_scope` on the client scopes every command to one guild
-  instead. [interactions.py, Creating Commands guide](https://github.com/interactions-py/interactions.py/blob/stable/docs/src/Guides/03%20Creating%20Commands.md)
+- **A bulk overwrite replaces the whole set**: `PUT` of the application's commands (hikari
+  `set_application_commands`) deletes every command not in the list, globally or — given a guild —
+  in that guild only. Guild commands are separate from global ones: a command in both shows twice
+  there. [application-commands](https://docs.discord.com/developers/interactions/application-commands#bulk-overwrite-global-application-commands)
 - **Slash commands live on Discord, not on the host.** Stopping the process does not remove them;
   only deleting the application or clearing its global commands does.
   [server-setup `OPERATIONS.md`, "Retiring a service"]
@@ -43,16 +44,16 @@ against locked `discord-py-interactions` 5.16.0. Re-check sources in `/upkeep`, 
   why displayed seconds skip. Discord does not publish it as such; the source is this project's
   README.
 
-## interactions.py traps
+## hikari traps
 
-- **A Discord object and its id compare equal but hash differently.** `SnowflakeObject.__eq__`
-  compares ids, `__hash__` is `id << 32`, while `Snowflake` is a plain `int` subclass. `channel ==
-  channel.id` is true, yet `channel.id in {channel: …}` is false. Never mix the two as dict keys.
-  [interactions.py 5.16 source, `models/discord/snowflake.py`]
-- **`ctx.channel` is a cache lookup**, not a payload field: `client.cache.get_channel(channel_id)`
-  (DM channel when there is no guild). It is `None` when the channel is not cached, never
-  `MISSING`, and it is **read-only** — a property with no setter, so `ctx.channel = …` raises
-  `AttributeError`; resolve into a local instead (`await client.fetch_channel(ctx.channel_id)`).
-  [interactions.py 5.16 source, `models/internal/context.py`, `client/smart_cache.py`]
-- `interactions.errors` is `interactions.client.errors`; every library-side HTTP failure is a
-  `LibraryException` subclass. [interactions.py 5.16 source]
+- **No user mention notifies unless asked.** With `user_mentions` left undefined, `create_message` and
+  `create_initial_response` send `allowed_mentions` with user mentions disabled: `<@id>` renders, and
+  pings no one. Pass the ids. [hikari 2.6 source, `internal/mentions.py`]
+- **`interaction.channel_id` is a payload field**, always present; no cache lookup is needed to
+  answer or to write, so an uncached thread behaves like any channel. `hikari.Snowflake` is a plain
+  `int`: key maps by id. [hikari 2.6 source, `impl/entity_factory.py`, `snowflakes.py`]
+- **Client errors are `hikari.ClientHTTPResponseError`** — `BadRequestError` (400, incl. 30046),
+  `ForbiddenError` (403), `NotFoundError` (404); 5xx is `InternalServerError`, outside it.
+  [hikari 2.6 source, `errors.py`]
+- **`GatewayBot.__init__` parses the token**, so importing the module needs a well-formed one; the
+  test conftest assembles a fake. [hikari 2.6 source, `impl/gateway_bot.py`]

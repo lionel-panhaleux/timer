@@ -14,7 +14,7 @@ Tooling is `just` + `uv`. `just` with no recipe lists them.
 
 The pre-commit ruff hooks are `repo: local` running `uv run ruff`: `uv.lock` is the only ruff pin.
 
-Python ≥ 3.13. One runtime dependency that matters: `discord-py-interactions` (plus `uvloop`).
+Python ≥ 3.13. One runtime dependency: `hikari`.
 
 ## Environment
 
@@ -23,9 +23,10 @@ Read via `os.getenv`, no settings object. `.env` (git-ignored) exports:
 - `DISCORD_TOKEN` — the bot token.
 - `PYTHONOPTIMIZE` — **the dev/prod switch.** Set (production sets `1`), `__debug__` is false: commands
   register **globally** and logging is INFO. Unset, `__debug__` is true: every command is scoped to
-  the debug guild `161406117686149120` and logging is DEBUG. The client runs with
-  `delete_unused_application_cmds=True`, so the process syncs the application's command set to what
-  it registers — never run a debug build with the production token.
+  the debug guild `161406117686149120` and logging is DEBUG. On start the bot bulk-overwrites its
+  scope's command set with `/timer` ([discord.md](discord.md#slash-commands)). A debug build with the
+  production token leaves the global command alone but shows `/timer` twice in the debug guild: use
+  a separate dev application.
 
 ## CI
 

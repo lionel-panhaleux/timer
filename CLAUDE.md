@@ -2,7 +2,7 @@
 
 **Timer Bot** — a public Discord bot: `/timer start` runs one countdown per channel as a
 self-updating embed with Pause/Resume/Stop buttons, pinging the author as time runs out. One Python
-module on `discord-py-interactions`, published to PyPI as `timer-bot`, running on gravelines.
+module on raw `hikari`, published to PyPI as `timer-bot`, running on gravelines.
 
 ## Three lifespans
 

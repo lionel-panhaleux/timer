@@ -33,7 +33,8 @@ commands for the running timer.
 It updates every 30 seconds, and about once a second in the last five and a half minutes — displayed
 seconds skip, the count itself stays exact (see [discord.md](discord.md)). Running, it carries
 **Pause** and **Stop** buttons; paused, **Resume** and **Stop**; finished, none. When Discord refuses
-to edit an old embed, the bot posts a fresh one and deletes the old.
+to edit an old embed, the bot posts a fresh one and deletes the old. When it refuses a new message —
+permission revoked, channel gone — the timer ends silently.
 
 **Pings.** The author is mentioned in the channel at every whole hour left, then at 30, 15, 5 and
 1 minute left, and at zero ("time!"). The marks are recomputed from the time left whenever the timer
@@ -67,9 +68,10 @@ display it.
 
 **PyPI 1.10**, deployed on gravelines from `myserver` ([operations.md](operations.md)).
 
-Not yet true of the running bot, both on the board:
+`master` is ported to hikari and unreleased; a release cannot install on the host until the deploy
+moves (on the board). Not yet true of the running bot:
 
-- The one-timer-per-channel refusal never fires: a second start runs a second timer, and the first
-  to finish drops the other from the channel map.
+- The one-timer-per-channel refusal never fires in 1.10: a second start runs a second timer. Fixed
+  on `master`.
 - **A restart drops every running timer** — timers live in process memory only. Surviving a restart
-  is wanted.
+  is wanted, on the board.
