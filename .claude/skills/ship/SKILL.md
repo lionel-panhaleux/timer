@@ -34,7 +34,7 @@ Pushing, `just release` and any deploy are outward-facing: stop and ask before e
 
 One unit of work is **one landing**, all three parts together:
 
-1. **Code** changed and green — `just lint` and `just test`.
+1. **Code** changed and green — `just lint`, `just typecheck` and `just test`.
 2. **Wiki** — every page named in the line's doc-impact updated, or the absence justified in a
    sentence. A pivot is an edit: the wiki never keeps a deprecated fact, git keeps the history. If
    the work changed a standing decision, the decision line changes here, with one line of rationale

@@ -15,6 +15,10 @@ fmt:
     uv run ruff check --fix
     uv run ruff format
 
+# Type check
+typecheck:
+    uv run ty check --error-on-warning
+
 # Run tests
 test:
     uv run pytest

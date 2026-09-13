@@ -20,7 +20,7 @@ just the hunks.
 ## Charter
 
 1. **Done-condition satisfied.** The board line stated one. Is it actually met? Verify it — run the
-   check if it is runnable (`just lint`, `just test`, a grep).
+   check if it is runnable (`just lint`, `just typecheck`, `just test`, a grep).
 2. **No new hazard.** KISS here means hazard-avoidance, not small diffs: non-local interdependency,
    behaviour not evident where it lives, a trap for a future agent without today's context. Could a
    fresh agent understand this from the files in front of it?
