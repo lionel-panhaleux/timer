@@ -69,10 +69,10 @@ display it.
 **PyPI 1.10**, deployed on gravelines from `myserver` ([operations.md](operations.md)).
 
 `master` is ported to hikari and unreleased; a release cannot install on the host until the deploy
-moves (on the board). Not yet true of the running bot:
+moves ([operations.md](operations.md#deploy--today)). Not yet true of the running bot:
 
 - The one-timer-per-channel refusal never fires in 1.10: a second start runs a second timer. Fixed
   on `master`.
 - Commands in a thread missing from the library's cache crash in 1.10. Fixed on `master`.
 - **A restart drops every running timer** — timers live in process memory only. Surviving a restart
-  is wanted, on the board.
+  is wanted.

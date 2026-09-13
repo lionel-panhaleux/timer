@@ -65,8 +65,9 @@ def time_str(time: float) -> str:
 class Timer:
     """One countdown, in TIMERS under its channel until run() ends.
 
-    Once run() is started, commands only change state and set `wake`: run() alone talks to
-    the channel, so a command landing mid-update never races it on the message.
+    Once run() is started, commands only change state and set `wake`, and run() alone writes
+    to the channel. A command can still land while a write is awaited: state read before an
+    await is stale after it.
     """
 
     def __init__(
@@ -155,10 +156,8 @@ class Timer:
                     return
         except hikari.ClientHTTPResponseError as e:
             logger.info("[%s] Timer dropped, Discord refused: %s", self.channel_id, e)
-        # nothing awaits this task: its exception would surface only when it is collected
         except Exception:
             logger.exception("[%s] Timer crashed", self.channel_id)
-            raise
         finally:
             if TIMERS.get(self.channel_id) is self:
                 del TIMERS[self.channel_id]
@@ -205,6 +204,7 @@ class Timer:
         else:
             message = await bot.rest.create_message(self.channel_id, embed=embed, components=rows)
             self.message_id = message.id
+        left = self.left()
         if self.thresholds and self.thresholds[-1] >= left:
             # hikari parses no user mention unless told to: the ping would not notify
             await bot.rest.create_message(

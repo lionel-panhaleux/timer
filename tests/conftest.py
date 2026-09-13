@@ -121,11 +121,15 @@ class Discord:
         self.responses: list[Response] = []
         #: method name -> how many next calls are refused with a 403
         self.refuse: dict[str, int] = {}
+        #: seconds every call takes to come back, during which the bot's other tasks run
+        self.latency = 0.0
         self.commands: typing.Any = None
         self.guild: typing.Any = None
         self._users: dict[str, int] = {}
 
-    def _call(self, method: str) -> None:
+    async def _call(self, method: str) -> None:
+        if self.latency:
+            await asyncio.sleep(self.latency)
         if self.refuse.get(method):
             self.refuse[method] -= 1
             raise hikari.ForbiddenError(url=method, headers={}, raw_body="", code=50013)
@@ -167,7 +171,7 @@ class Discord:
         components: typing.Any = hikari.UNDEFINED,
         user_mentions: typing.Any = hikari.UNDEFINED,
     ) -> Message:
-        self._call("create_message")
+        await self._call("create_message")
         title = _given(embed) and embed.title
         message = Message(
             id=hikari.Snowflake(next(_ids)),
@@ -191,7 +195,7 @@ class Discord:
         embed: typing.Any = hikari.UNDEFINED,
         components: typing.Any = hikari.UNDEFINED,
     ) -> Message:
-        self._call("edit_message")
+        await self._call("edit_message")
         found = self._message(message)
         found.title = embed.title
         found.buttons = _buttons(components)
@@ -199,7 +203,7 @@ class Discord:
         return found
 
     async def delete_message(self, channel: typing.Any, message: typing.Any) -> None:
-        self._call("delete_message")
+        await self._call("delete_message")
         self._message(message).deleted = True
 
     async def create_interaction_response(
@@ -214,7 +218,7 @@ class Discord:
         user_mentions: typing.Any = hikari.UNDEFINED,
         **kwargs: typing.Any,
     ) -> None:
-        self._call("create_interaction_response")
+        await self._call("create_interaction_response")
         self.responses.append(
             Response(
                 token=token,
@@ -230,7 +234,7 @@ class Discord:
     async def edit_interaction_response(
         self, application: typing.Any, token: str, content: typing.Any = hikari.UNDEFINED, **kwargs
     ) -> None:
-        self._call("edit_interaction_response")
+        await self._call("edit_interaction_response")
         response = next(r for r in self.responses if r.token == token)
         response.content = _given(content)
 

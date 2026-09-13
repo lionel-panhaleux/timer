@@ -34,10 +34,12 @@ subcommand name or button `custom_id` to handler; every channel write goes throu
 
 ## Errors
 
-**Discord refusing is logged, and the bot carries on**: a `hikari.ClientHTTPResponseError` (any 4xx)
-from an edit, a delete or a send is logged at INFO and worked around (a fresh message, a user-facing
+**Discord refusing a channel write is logged, and the bot carries on**: a
+`hikari.ClientHTTPResponseError` (any 4xx) from an edit, a delete or a send is logged at INFO and worked around (a fresh message, a user-facing
 sentence, or the timer ends). A refusal of the user's request is a `CommandFailed`, answered
-ephemerally. Anything else is raised. One timer's failure never takes down the others.
+ephemerally. Anything else is raised — except in a timer's own task, where nothing would catch it:
+there it is logged with its traceback and the timer ends. One timer's failure never takes down the
+others.
 
 ## State
 

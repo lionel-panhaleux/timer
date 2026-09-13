@@ -214,6 +214,22 @@ async def test_pings_on_every_mark(discord):
     assert discord.embed().title == "Timer finished"
 
 
+async def test_adjusting_during_an_update_keeps_the_marks(discord):
+    """An `add` landing while an embed update is in flight: marks follow the new time left."""
+    await discord.command("start", hours=0, minutes=4)
+    start = now()
+    discord.latency = 0.3
+    # updates run every 1.1s under five and a half minutes: this lands inside the first one
+    await asyncio.sleep(1.2 - 0.01)
+    await discord.command("add", minutes=10)
+    await asyncio.sleep(60)
+    assert not pings(discord)
+    await asyncio.sleep(9 * 60)
+    ((at, content),) = pings(discord)
+    assert content == f"{PING} 5′ 00″ remaining"
+    assert at - start == pytest.approx(9 * 60, abs=1)
+
+
 async def test_marks_follow_an_adjustment(discord):
     """Marks above the time left are skipped, and recomputed when time is added."""
     await discord.command("start", hours=0, minutes=20)
