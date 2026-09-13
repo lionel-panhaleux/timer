@@ -762,7 +762,7 @@ wheels = [
 
 [[package]]
 name = "timer-bot"
-version = "1.11"
+version = "1.12"
 source = { editable = "." }
 dependencies = [
     { name = "hikari" },
