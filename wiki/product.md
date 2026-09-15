@@ -77,9 +77,7 @@ buttons on an embed posted before a restart or a deploy still answer.
 - **No seconds on the display above five minutes.**
 - **No database.** See [dogmas.md](dogmas.md#state).
 
-## Status (2026-09-13)
+## Status (2026-09-15)
 
-**PyPI 1.11** — the hikari port — deployed on gravelines by this repo's `ansible/`
-([operations.md](operations.md#deploy)). Not yet true of the running bot:
-
-- **Surviving a restart** is on `master`, unreleased: 1.11 drops every running timer on a restart.
+**PyPI 1.12** — running timers survive a restart — deployed on gravelines by this repo's `ansible/`
+([operations.md](operations.md#deploy)). Everything above is true of the running bot.
