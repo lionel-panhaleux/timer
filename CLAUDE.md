@@ -48,7 +48,7 @@ task; after two rounds that still raise findings, escalate to the human rather t
 
 ## Commits
 
-Trunk-based: straight to `master`, no feature branches. Describe the change itself. A `Fixes #N` line
+Trunk-based: straight to `main`, no feature branches. Describe the change itself. A `Fixes #N` line
 above the trailers only for a real GitHub issue. Push, release and deploy are the human's call.
 
 ## Right now

@@ -37,7 +37,7 @@ git-ignored.
 
 ## CI
 
-`test.yml` on every PR and push to `master`: uv with Python 3.13, `uv sync --group dev`, ruff check,
+`test.yml` on every PR and push to `main`: uv with Python 3.13, `uv sync --group dev`, ruff check,
 ruff format check, ty, pytest. pytest exits 5 when it collects no tests, which fails the job.
 
 ## Deploy

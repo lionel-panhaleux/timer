@@ -9,7 +9,7 @@ Arguments, if any, name the line. Otherwise take the **top** line of `BOARD.md`.
 
 ## 1. Claim
 
-Read `BOARD.md` and `wiki/index.md`. If another agent is working `master`, note which line it claimed
+Read `BOARD.md` and `wiki/index.md`. If another agent is working `main`, note which line it claimed
 and stay off its files where you can. Announce the line you are taking.
 
 If the line names a `board/<slug>.md`, read it: it holds the elaborated contract — scope, hazards,
@@ -45,7 +45,7 @@ One unit of work is **one landing**, all three parts together:
 3. **Board** — delete the line. Delete its `board/<slug>.md` too, unless another line still points at
    it. Completion is deletion; there is no done section.
 
-Then commit to `master` (trunk-based, no feature branch). Describe the change itself; `Fixes #N` only
+Then commit to `main` (trunk-based, no feature branch). Describe the change itself; `Fixes #N` only
 for a real GitHub issue.
 
 ## 4. Egress

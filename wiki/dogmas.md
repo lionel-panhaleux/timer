@@ -82,8 +82,8 @@ instance, not release notes. *(Interview, 2026-09-13.)*
 
 ## Commits, releases, deploys
 
-**Trunk-based**: commit straight to `master`, no feature branches. Two or three agents may work
-parallel board lines on `master` — each claims its line, stays aware of siblings, keeps to its own
+**Trunk-based**: commit straight to `main`, no feature branches. Two or three agents may work
+parallel board lines on `main` — each claims its line, stays aware of siblings, keeps to its own
 commits; imperfect commit isolation is acceptable when files overlap.
 
 Describe the change itself in the message. When a commit fixes a GitHub issue, close it with a

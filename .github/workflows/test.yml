@@ -3,7 +3,7 @@ name: Test
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [main]
 
 jobs:
   test:
@@ -11,8 +11,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # setup-uv publishes no floating major tag: pin an exact release
       - name: Set up uv
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.1.0
         with:
           python-version: "3.13"
 
